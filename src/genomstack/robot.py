@@ -1,12 +1,12 @@
-from .config import Config, load_config
-from .components import *
+from .config import Config
 from .runtime import Runtime
+from .components import *
 import os
 
 
 class Robot:
-    def __init__(self, cfg: Config):
-        self.cfg = cfg
+    def __init__(self, cfg: str):
+        self.cfg = Config(cfg)
         self.runtime = Runtime(cfg)
 
         if cfg.mocap.model == 'qualisys':
