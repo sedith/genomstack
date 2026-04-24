@@ -1,0 +1,43 @@
+host: porche
+plugin_path: /home/onepiece/devel/lib/genom/pocolibs/plugins
+
+mocap:
+    model: qualisys
+    host: 10.135.2.40
+    body: pcHexa2
+
+maneuver:
+    vmax: 1.5
+    wmax: 1
+    amax: 3
+    dwmax: 2
+
+rotorcraft:
+    serial: /dev/ttyACM0
+    calib: imucalib.json
+
+mass: 3.22
+geom:
+    rotors: 6
+    armlen: 0.39
+    cf: 11.4e-4
+    ct: 2.4e-5
+    rx: -20
+    rz: -1
+
+uavpos:
+    xyradius: 2
+    gain:
+        Kpxy: 20
+        Kpz: 15
+        Kvxy: 10
+        Kvz: 10
+        Kixy: 0
+        Kiz: 0
+
+uavatt:
+    gain:
+        Kqxy: 15
+        Kqz: 15
+        Kwxy: 1.5
+        Kwz: 1

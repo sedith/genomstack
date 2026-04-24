@@ -1,0 +1,44 @@
+host: localhost
+plugin_path: ""
+
+mocap:
+    model: optitrack
+    host: localhost
+    port: "1509"
+    body: TX
+
+maneuver:
+    vmax: 3
+    wmax: 2
+    amax: 5
+    dwmax: 3
+
+rotorcraft:
+    serial: /tmp/pty-tx
+    calib: ""
+
+mass: 2.5
+geom:
+    rotors: 6
+    armlen: 0.39
+    cf: 12.5e-4
+    ct: 2.5e-5
+    rx: -20
+    rz: -1
+
+uavpos:
+    xyradius: 2
+    gain:
+        Kpxy: 20
+        Kpz: 15
+        Kvxy: 10
+        Kvz: 10
+        Kixy: 0
+        Kiz: 0
+
+uavatt:
+    gain:
+        Kqxy: 15
+        Kqz: 15
+        Kwxy: 1.5
+        Kwz: 1
