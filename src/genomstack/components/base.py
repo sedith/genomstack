@@ -3,18 +3,19 @@ from typing import Any
 
 
 class Component:
-    NAME: str | None = None
-
-    def __init__(self, cfg: RobotConfig):
-        if self.NAME is None:
-            raise ValueError(f'{self.__class__.__name__}.NAME must be defined')
-
+    def __init__(self, cfg: RobotConfig, name: str, robot: Robot):
         self.cfg = cfg
+        self.name = name
+        self.robot = robot
         self.handle = None
 
     @property
-    def name(self) -> str:
-        return self.NAME
+    def component_cfg(self):
+        return self.cfg.components[self.name]
+
+    @property
+    def genom_type(self):
+        return type(self).__name__.lower()
 
     def call(self, method: str, *args, **kwargs) -> Any:
         """Call a service/method on the underlying GenoM handle."""
@@ -37,7 +38,7 @@ class Component:
 
     def start_log(self) -> None:
         """Start component-specific logging."""
-        self.call('log', f'/tmp/{self.NAME}.log')
+        self.call('log', f'/tmp/{self.name}.log')
 
     def stop_log(self) -> None:
         """Stop component-specific logging."""

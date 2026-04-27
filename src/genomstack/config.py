@@ -56,7 +56,7 @@ class Config(AttrDict):
 
         self.root = root
         self.config_file = config_file
-        self.rotorcraft.calib_file = self.root / 'calib' / self.rotorcraft.calib
+        self.components.rotorcraft.calib_file = self.root / 'calib' / self.components.rotorcraft.calib
         self.log_dir = self.root / 'logs' / time.strftime("%y%m%d_%H%M%S")
         self.log_dir.mkdir(parents=True, exist_ok=True)
 

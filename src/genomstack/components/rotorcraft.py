@@ -3,11 +3,9 @@ import json
 
 
 class Rotorcraft(Component):
-    NAME = 'rotorcraft'
-
     def setup(self) -> None:
         self.call('connect', {
-            'serial': self.cfg.rotorcraft.serial,
+            'serial': self.component_cfg.serial,
             'baud': 0,
         })
 
@@ -20,8 +18,8 @@ class Rotorcraft(Component):
             'mfc': [20, 20, 20],
         })
 
-        if self.cfg.rotorcraft.calib:
-            calib = json.load(open(self.cfg.rotorcraft.calib))
+        if self.component_cfg.calib:
+            calib = json.load(open(self.component_cfg.calib))
             self.call('set_imu_calibration', calib)
 
         self.connect_port('rotor_input', 'uavatt/rotor_input')

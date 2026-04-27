@@ -3,8 +3,6 @@ from math import pi
 
 
 class Maneuver(Component):
-    NAME = 'maneuver'
-
     def setup(self) -> None:
         self.call('set_bounds', {
             'xmin': -10, 'xmax': 10,
@@ -14,13 +12,13 @@ class Maneuver(Component):
         })
 
         self.call('set_velocity_limit', {
-            'v': self.cfg.maneuver.vmax,
-            'w': self.cfg.maneuver.wmax,
+            'v': self.component_cfg.vmax,
+            'w': self.component_cfg.wmax,
         })
 
         self.call('set_acceleration_limit', {
-            'a': self.cfg.maneuver.amax,
-            'dw': self.cfg.maneuver.dwmax,
+            'a': self.component_cfg.amax,
+            'dw': self.component_cfg.dwmax,
         })
 
 

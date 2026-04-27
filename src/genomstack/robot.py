@@ -5,28 +5,29 @@ import os
 
 
 class Robot:
+    COMPONENT_CLASSES = {
+        'rotorcraft': Rotorcraft,
+        'optitrack': Optitrack,
+        'qualisys': Qualisys,
+        'pom': Pom,
+        'uavpos': UavPos,
+        'uavatt': UavAtt,
+        'maneuver': Maneuver,
+    }
+
     def __init__(self, cfg: str):
         self.cfg = Config(cfg)
-        self.runtime = Runtime(cfg)
+        self.runtime = Runtime(self.cfg)
 
-        if cfg.mocap.model == 'qualisys':
-            self.mocap = Qualisys(cfg)
-        elif cfg.mocap.model == 'optitrack':
-            self.mocap = Optitrack(cfg)
-        self.rotorcraft = Rotorcraft(cfg)
-        self.pom = Pom(cfg)
-        self.uavpos = UavPos(cfg)
-        self.uavatt = UavAtt(cfg)
-        self.maneuver = Maneuver(cfg)
+        self.components = []
 
-        self.components = [
-            self.rotorcraft,
-            self.mocap,
-            self.pom,
-            self.uavpos,
-            self.uavatt,
-            self.maneuver,
-        ]
+        for name, component_cfg in self.cfg.components.items():
+            component_type = getattr(component_cfg, "type", name)
+            component_cls = self.COMPONENT_CLASSES[component_type]
+            component = component_cls(self.cfg, name, robot=self)
+
+            setattr(self, name, component)
+            self.components.append(component)
 
     def setup(self):
         print(f'init genomix...')

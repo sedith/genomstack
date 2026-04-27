@@ -2,13 +2,11 @@ from .base import Component
 
 
 class Qualisys(Component):
-    NAME = 'qualisys'
-
     def setup(self) -> None:
-        self.call('connect', self.cfg.mocap.host)
+        self.call('connect', self.component_cfg.host)
 
     def get_current_state(self) -> dict:
-        return self.call('bodies', self.cfg.mocap.body)['bodies']
+        return self.call('bodies', self.component_cfg.body)['bodies']
 
     def start_log(self) -> None:
         pass
@@ -19,13 +17,11 @@ class Qualisys(Component):
 
 
 class Optitrack(Component):
-    NAME = 'optitrack'
-
     def setup(self) -> None:
-        self.call('connect', self.cfg.mocap.host, self.cfg.mocap.port)
+        self.call('connect', self.component_cfg.host, self.component_cfg.port)
 
     def get_current_state(self):
-        return self.call('bodies', self.cfg.mocap.body)['bodies']
+        return self.call('bodies', self.component_cfg.body)['bodies']
 
     def start_log(self) -> None:
         pass
