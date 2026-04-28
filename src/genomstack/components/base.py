@@ -3,26 +3,32 @@ from typing import Any
 
 
 class Component:
-    def __init__(self, cfg: RobotConfig, name: str, robot: Robot):
+    def __init__(self, cfg: Config, name: str, robot: Robot):
         self.cfg = cfg
         self.name = name
         self.robot = robot
         self.handle = None
 
     @property
-    def component_cfg(self):
+    def component_cfg(self) -> Config:
         return self.cfg.components[self.name]
 
     @property
-    def genom_type(self):
-        return type(self).__name__.lower()
+    def gtype(self) -> str:
+        return self.component_cfg['type']
+
+    def use_instance(self) -> bool:
+        return self.name != self.gtype
+
+    def port(self, port) -> str:
+        return f'{self.name}/{port}'
 
     def call(self, method: str, *args, **kwargs) -> Any:
         """Call a service/method on the underlying GenoM handle."""
 
         if not hasattr(self.handle, method):
             raise AttributeError(
-                f'Component {self.NAME} has no method {method}'
+                f'Component {self.name} has no method {method}'
             )
 
         fn = getattr(self.handle, method)

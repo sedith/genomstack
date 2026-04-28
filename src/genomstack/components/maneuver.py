@@ -21,5 +21,4 @@ class Maneuver(Component):
             'dw': self.component_cfg.dwmax,
         })
 
-
-        self.connect_port('state', 'pom/frame/robot')
+        self.connect_port('state', 'pom_mocap/frame/robot')

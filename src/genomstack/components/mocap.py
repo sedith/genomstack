@@ -8,6 +8,9 @@ class Qualisys(Component):
     def get_current_state(self) -> dict:
         return self.call('bodies', self.component_cfg.body)['bodies']
 
+    def body_port(self):
+        return f'{self.name}/bodies/{self.component_cfg.body}'
+
     def start_log(self) -> None:
         pass
 
@@ -22,6 +25,9 @@ class Optitrack(Component):
 
     def get_current_state(self):
         return self.call('bodies', self.component_cfg.body)['bodies']
+
+    def body_port(self):
+        return f'{self.name}/bodies/{self.component_cfg.body}'
 
     def start_log(self) -> None:
         pass

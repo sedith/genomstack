@@ -16,8 +16,18 @@ class Pom(Component):
         self.connect_port('measure/imu', 'rotorcraft/imu')
         self.call('add_measurement', 'imu')
 
-        self.connect_port('measure/mocap', f'{self.robot.mocap.component_cfg.type}/bodies/{self.robot.mocap.component_cfg.body}')
-        self.call('add_measurement', 'mocap')
+        if self.component_cfg.use_lidar:
+            pub = self.call('measure', '/tmp/rko_lio')
+            # pub({
+            #     'measure': {'ts': {'sec': 0, 'nsec': 0}, 'intrinsic': 0,
+            #     'pos': None, 'att': None, 'vel': None, 'avel': None, 'acc': None, 'aacc': None,
+            #     'pos_cov': None, 'att_cov': None, 'att_pos_cov': None, 'vel_cov': None, 'avel_cov': None, 'acc_cov': None, 'aacc_cov': None}
+            # })
+            self.connect_port('measure/lidar', '/tmp/rko_lio')
+            self.call('add_measurement', 'lidar')
+        else:
+            self.connect_port('measure/mocap', self.robot.mocap.body_port())
+            self.call('add_measurement', 'mocap')
 
     def start_log(self) -> None:
         self.call('log_state', f'/tmp/{self.name}.log')

@@ -5,10 +5,11 @@ sleep 0.2
 genomixd &
 sleep 0.5
 
-optitrack-pocolibs -f &
+optitrack-pocolibs -f -i mocap &
+pom-pocolibs -f -i pom_mocap &
+pom-pocolibs -f -i pom_lidar &
 uavatt-pocolibs -f &
 uavpos-pocolibs -f &
 rotorcraft-pocolibs -f &
-pom-pocolibs -f &
 maneuver-pocolibs -f &
 nhfc-pocolibs -f &

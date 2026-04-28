@@ -15,6 +15,10 @@ class Runtime:
 
     def load(self, component: Component):
         if component.name not in self._handles:
-            self._handles[component.name] = self.g.load(component.genom_type)
+            if component.use_instance():
+                self._handles[component.name] = self.g.load(component.gtype, '-i', component.name)
+            else:
+                self._handles[component.name] = self.g.load(component.gtype)
+
             component.handle = self._handles[component.name]
         return self._handles[component.name]

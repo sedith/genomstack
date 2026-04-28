@@ -22,8 +22,13 @@ components:
         port: "1509"
         body: TX
 
-    pom:
+    pom_mocap:
         type: pom
+        use_lidar: false
+
+    pom_lidar:
+        type: pom
+        use_lidar: true
 
     uavpos:
         type: uavpos
