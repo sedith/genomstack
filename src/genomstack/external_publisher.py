@@ -8,6 +8,13 @@ class ExternalPublisher:
         self.io = io
         self.publisher = None
 
+        make_publisher = getattr(self.target.handle, self.publisher_cfg.publisher)
+        self.publisher = make_publisher(self.publisher_cfg.path)
+        self.target.connect_port(
+            self.publisher_cfg.port,
+            self.publisher_cfg.path,
+        )
+        
     @property
     def publisher_cfg(self) -> Config:
         return self.cfg.external_publishers[self.name]
@@ -15,14 +22,6 @@ class ExternalPublisher:
     @property
     def target(self) -> Component:
         return self.io.components[self.publisher_cfg.target]
-
-    def setup(self) -> None:
-        make_publisher = getattr(self.target.handle, self.publisher_cfg.publisher)
-        self.publisher = make_publisher(self.publisher_cfg.path)
-        self.target.connect_port(
-            self.publisher_cfg.port,
-            self.publisher_cfg.path,
-        )
 
     def publish(self, msg: dict) -> None:
         self.publisher(msg)
