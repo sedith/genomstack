@@ -1,13 +1,17 @@
-from genomstack import Robot
+from genomstack import RobotIO, Mission
 
 
-r = Robot('tilthex_simu')
+io = RobotIO('tilthex_simu')
+io.setup()
 
-r.setup()
-r.spin()
-r.start(prompt=True)
+mission = Mission(io)
 
-r.goto(-3, 2, 2, 1, prompt=True)
-r.land(prompt=True)
+mission.spin()
+mission.start(prompt=True)
 
-r.stop(prompt=True)
+mission.goto(-3, 2, 2, 1, prompt=True)
+mission.goto(0, 0, 1, 0, prompt=True)
+
+mission.land(prompt=True)
+
+mission.stop(prompt=True)

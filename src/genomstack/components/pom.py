@@ -26,12 +26,9 @@ class Pom(Component):
             self.connect_port('measure/lidar', '/tmp/rko_lio')
             self.call('add_measurement', 'lidar')
         else:
-            self.connect_port('measure/mocap', self.robot.mocap.body_port())
+            self.connect_port('measure/mocap', self.io.components['mocap'].body_port())
             self.call('add_measurement', 'mocap')
 
     def start_log(self) -> None:
         self.call('log_state', f'/tmp/{self.name}.log')
         self.call('log_measurements',  f'/tmp/{self.name}-measurements.log')
-
-    def get_current_state(self) -> dict:
-        return self.call('frame', 'robot')['frame']

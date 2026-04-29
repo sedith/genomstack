@@ -2,10 +2,10 @@ from __future__ import annotations
 
 
 class ExternalPublisher:
-    def __init__(self, cfg: Config, name: str, robot: Robot):
+    def __init__(self, cfg: Config, name: str, io: RobotIO):
         self.cfg = cfg
         self.name = name
-        self.robot = robot
+        self.io = io
         self.publisher = None
 
     @property
@@ -14,7 +14,7 @@ class ExternalPublisher:
 
     @property
     def target(self) -> Component:
-        return getattr(self.robot, self.publisher_cfg.target)
+        return self.io.components[self.publisher_cfg.target]
 
     def setup(self) -> None:
         make_publisher = getattr(self.target.handle, self.publisher_cfg.publisher)

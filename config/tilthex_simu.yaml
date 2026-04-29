@@ -34,10 +34,10 @@ components:
         type: uavpos
         xyradius: 2
         gain:
-            Kpxy: 20
-            Kpz: 15
-            Kvxy: 10
-            Kvz: 10
+            Kpxy: 10
+            Kpz: 10
+            Kvxy: 20
+            Kvz: 20
             Kixy: 0
             Kiz: 0
 
@@ -46,25 +46,19 @@ components:
         gain:
             Kqxy: 15
             Kqz: 15
-            Kwxy: 1.5
+            Kwxy: 3
             Kwz: 1
 
-    # maneuver:
-    #     type: maneuver
-    #     vmax: 3
-    #     wmax: 2
-    #     amax: 5
-    #     dwmax: 3
+    maneuver:
+        type: maneuver
+        vmax: 3
+        wmax: 2
+        amax: 5
+        dwmax: 3
 
 external_publishers:
-    # lidar:
-    #     target: pom_lidar
-    #     publisher: measure
-    #     port: measure/imu
-    #     path: /tmp/pom_lidar
-
-    ref:
-        target: uavpos
-        publisher: reference
-        port: reference
-        path: /tmp/uavpos_ref
+    lidar:
+        target: pom_lidar
+        publisher: measure
+        port: measure/imu
+        path: /tmp/pom_lidar

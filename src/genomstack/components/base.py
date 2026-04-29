@@ -3,10 +3,10 @@ from typing import Any
 
 
 class Component:
-    def __init__(self, cfg: Config, name: str, robot: Robot):
+    def __init__(self, cfg: Config, name: str, io: RobotIO):
         self.cfg = cfg
         self.name = name
-        self.robot = robot
+        self.io = io
         self.handle = None
 
     @property
