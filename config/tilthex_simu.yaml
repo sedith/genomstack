@@ -49,9 +49,22 @@ components:
             Kwxy: 1.5
             Kwz: 1
 
-    maneuver:
-        type: maneuver
-        vmax: 3
-        wmax: 2
-        amax: 5
-        dwmax: 3
+    # maneuver:
+    #     type: maneuver
+    #     vmax: 3
+    #     wmax: 2
+    #     amax: 5
+    #     dwmax: 3
+
+external_publishers:
+    # lidar:
+    #     target: pom_lidar
+    #     publisher: measure
+    #     port: measure/imu
+    #     path: /tmp/pom_lidar
+
+    ref:
+        target: uavpos
+        publisher: reference
+        port: reference
+        path: /tmp/uavpos_ref

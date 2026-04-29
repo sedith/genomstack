@@ -33,5 +33,4 @@ This assumes that the all robotpkg dependencies are installed and properly setup
 * handle genom running remotely on robot
     * also scp logs?
 * port naming for instances etc -- for now, they are still hard coded
-* external publishers (manual publishing onto files)
 * handle ros2 for lidar and have a script for publishing to pom
