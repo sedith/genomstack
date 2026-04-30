@@ -2,11 +2,10 @@ from genomstack import RobotIO, Mission
 import time
 
 io = RobotIO('tilthex')
-# io.setup()
+io.setup()
 
-# mission = Mission(io)
-
-# mission.start_logs()
+mission = Mission(io)
+mission.start_logs()
 
 # mission.spin()
 # mission.start(prompt=True)
@@ -16,9 +15,4 @@ io = RobotIO('tilthex')
 
 # mission.land(prompt=True)
 
-for _ in range(10):
-    time.sleep(1)
-    print(io.read('pom_lidar', 'frame/robot')['frame']['pos'])
-
-
-# mission.stop(prompt=True)
+mission.stop(prompt=True)

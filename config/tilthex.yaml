@@ -21,15 +21,15 @@ components:
         type: qualisys
         host: 10.135.2.40
 
-    # pom_mocap:
-    #     type: pom
-    #     meas:
-    #         -
-    #             name: mocap
-    #             port: mocap/bodies/pcHexa2
-    #         -
-    #             name: imu
-    #             port: rotorcraft/imu
+    pom_mocap:
+        type: pom
+        meas:
+            -
+                name: mocap
+                port: mocap/bodies/pcHexa2
+            -
+                name: imu
+                port: rotorcraft/imu
 
     pom_lidar:
         type: pom
