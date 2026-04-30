@@ -11,6 +11,4 @@ livox_lidar_publisher:
         output_data_type: 0
 
         lvx_file_path: /home/livox/livox_test.lvx
-        user_config_path: "$(find-pkg-share livox_ros_driver2)/config/mid360.json"
-
         cmdline_input_bd_code: livox0000000001

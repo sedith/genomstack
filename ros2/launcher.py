@@ -21,7 +21,7 @@ if os.environ.get(SOURCED_ENV) == '1':
 ## relaunchers
 def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
-        f'source .bashrc && '
+        f'source ~/.onepiece.bashrc && '
         f'cd {cfg.ros2.workspace} && '
         f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
@@ -42,7 +42,7 @@ def relaunch_with_ros_env(cfg: Config) -> None:
 
         setup_path = Path(setup)
         if not setup_path.is_absolute():
-            setup_path = ROOT / setup_path
+            setup_path = cfg.root / setup_path
 
         setup_cmds.append(f'source {shlex.quote(str(setup_path))}')
 
@@ -81,9 +81,14 @@ def node_tf_static():
             executable='static_transform_publisher',
             name='tf_rko',
             arguments=[
-                '0.0', '0.0', '0.0',
-                '0.0', '0.0', '0.0',
-                'body_rko', 'livox_lidar',
+                '--x', '0',
+                '--y', '0',
+                '--z', '0',
+                '--roll', '0',
+                '--pitch', '0',
+                '--yaw', '0',
+                '--frame-id', 'body_rko',
+                '--child-frame-id', 'livox_lidar',
             ],
             output='screen',
         ),
@@ -114,6 +119,7 @@ def node_livox():
             output='screen',
             parameters=[
                 str(ROS_CONFIG_DIR / 'mid360.yaml'),
+                {'user_config_path': str(ROS_CONFIG_DIR / 'mid360.json')}
             ],
         )
     ]
