@@ -1,5 +1,6 @@
 host: porche
 plugin_path: /home/onepiece/devel/lib/genom/pocolibs/plugins
+workspace: /home/onepiece/mjacquet/genom_obelix/
 
 mass: 3.22
 geom:
@@ -17,18 +18,18 @@ components:
         calib: imucalib.json
 
     mocap:
-        model: qualisys
+        type: qualisys
         host: 10.135.2.40
 
-    pom_mocap:
-        type: pom
-        meas:
-            -
-                name: mocap
-                port: mocap/bodies/pcHexa2
-            -
-                name: imu
-                port: rotorcraft/imu
+    # pom_mocap:
+    #     type: pom
+    #     meas:
+    #         -
+    #             name: mocap
+    #             port: mocap/bodies/pcHexa2
+    #         -
+    #             name: imu
+    #             port: rotorcraft/imu
 
     pom_lidar:
         type: pom
@@ -76,7 +77,6 @@ external_publishers:
 
 ros2:
     enabled: true
-    workspace: ~/mjacquet/genom_obelix/
     rviz: false
 
     mode: livox  # none, livox or gazebo

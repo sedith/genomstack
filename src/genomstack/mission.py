@@ -5,6 +5,7 @@ import sys
 from .robot_io import RobotIO
 from .utils import is_localhost
 
+
 class Mission:
     def __init__(self, io: RobotIO):
         self.io = io

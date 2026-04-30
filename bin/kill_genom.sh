@@ -4,6 +4,7 @@
 
 pkill -9 mrsim-pocolibs  &
 pkill -9 optitrack-pocol &
+pkill -9 qualisys-pocoli &
 pkill -9 rotorcraft-poco &
 pkill -9 pom-pocolibs    &
 pkill -9 maneuver-pocoli &

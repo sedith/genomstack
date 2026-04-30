@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import time
 import yaml
+from .utils import is_localhost
 
 
 def find_workspace_root(start: Path | None = None) -> Path:

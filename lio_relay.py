@@ -1,11 +1,15 @@
-from genomstack import RobotIO
-from genomstack.utils import quat2euler
+
+import sys
 import numpy as np
-import time
+import rclpy
+from rclpy.node import Node
+from nav_msgs.msg import Odometry
+from genomstack import RobotIO, Config
+from genomstack.utils import quat2euler
 
 
-def jacobian_euler2quat(euler):
-    roll, pitch, yaw = euler
+def jacobian_euler2quat(q):
+    roll, pitch, yaw = quat2euler(q)
 
     cr = np.cos(roll * 0.5)
     sr = np.sin(roll * 0.5)
@@ -37,44 +41,80 @@ def jacobian_euler2quat(euler):
     return J
 
 
-io = RobotIO('tilthex_simu')
+def odom_to_pom_measure(msg: Odometry, cov: dict) -> dict:
+    s = msg.header.stamp
+    p = msg.pose.pose.position
+    q = msg.pose.pose.orientation
+    v = msg.twist.twist.linear
+    w = msg.twist.twist.angular
 
-var_p = 0.001 ** 2
-var_a = 0.001 ** 2
-# var_v = 0.1 ** 2
-# var_w = 0.1 ** 2
+    J = jacobian_euler2quat([q.w, q.x, q.y, q.z])
+    cov_q = J @ cov['eul'] @ J.T
 
-p = [1,1,1]
-q = [0,1,0,0]
-J = jacobian_euler2quat(quat2euler(q))
-cov_p = np.diag([var_p]*3)
-cov_euler = np.diag([var_a]*3)
-cov_q = J @ cov_euler @ J.T
-
-while 1:
-    sec, nsec = divmod(time.time_ns(), 1_000_000_000)
-    data = {'measure': {
-        'ts': {'sec': sec, 'nsec': nsec},
-        'intrinsic': 0,
-        'pos': {'x': p[0], 'y': p[1], 'z': p[2]},
-        'att': {'qw': q[0], 'qx': q[1], 'qy': q[2], 'qz': q[3]},
-        # 'vel': {'vx': v_w[0], 'vy': v_w[1], 'vz': v_w[2]},
-        # 'avel': {'wx': w_w[0], 'wy': w_w[1], 'wz': w_w[2]},
-        'vel': None,
-        'avel': None,
-        'acc': None,
-        'aacc': None,
-        'pos_cov': {'cov': list(cov_p[np.tril_indices(3)])},
-        'att_cov': {'cov': list(cov_q[np.tril_indices(4)])},
-        'att_pos_cov': {'cov': [0] * 12},
-        # 'vel_cov': {'cov': [var_v, 0, var_v, 0, 0, var_v]},
-        # 'avel_cov': {'cov': [var_w, 0, var_w, 0, 0, var_w]},
-        'vel_cov': None,
-        'avel_cov': None,
-        'acc_cov': None,
-        'aacc_cov': None}
+    return {
+        'measure': {
+            'ts': {'sec': s.sec, 'nsec': s.nanosec},
+            'intrinsic': 0,
+            'pos': {'x': p.x, 'y': p.y, 'z': p.z},
+            'att': {'qw': q.w, 'qx': q.x, 'qy': q.y, 'qz': q.z},
+            'vel': {'vx': v.x, 'vy': v.y, 'vz': v.z},
+            'avel': {'wx': w.x, 'wy': w.y, 'wz': w.z},
+            'acc': None,
+            'aacc': None,
+            'pos_cov': {'cov': cov['p']},
+            'att_cov': {'cov': list(cov_q[np.tril_indices(4)])},
+            'att_pos_cov': None,
+            'vel_cov': {'cov': cov['v']},
+            'avel_cov': {'cov': cov['w']},
+            'acc_cov': None,
+            'aacc_cov': None,
+        }
     }
-    
-    io.publish('lidar', data)
 
-    time.sleep(0.1)
+
+def main():
+    if len(sys.argv) != 2:
+        print('usage: python3 ros2/lio_relay.py <config name>.yaml')
+        return 1
+
+    config_arg = sys.argv[1]
+    io = RobotIO(config_arg)
+
+    topic = '/rko_lio/odometry'
+    publisher_name = 'lidar'
+    std_p = 0.001
+    std_eul = 0.001
+    std_v = 0.1
+    std_w = 0.1
+
+    cov = {}
+    cov['p'] = list((np.eye(3) * std_p ** 2)[np.tril_indices(3)])
+    cov['v'] = list((np.eye(3) * std_v ** 2)[np.tril_indices(3)])
+    cov['w'] = list((np.eye(3) * std_w ** 2)[np.tril_indices(3)])
+    cov['eul'] = np.eye(3) * std_eul ** 2
+
+    rclpy.init()
+    node = Node('lio_relay')
+
+    def callback(msg):
+        print(msg.pose.pose.position)
+        io.publish(publisher_name, odom_to_pom_measure(msg, cov))
+
+    node.create_subscription(
+        Odometry,
+        topic,
+        callback,
+        10,
+    )
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

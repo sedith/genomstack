@@ -23,7 +23,7 @@ if os.environ.get(SOURCED_ENV) == '1':
 def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
         f'source ~/.onepiece.bashrc && '
-        f'cd {cfg.ros2.workspace} && '
+        f'cd {cfg.workspace} && '
         f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
     )
@@ -180,8 +180,8 @@ def main():
         return 0
 
     ## relaunch script if necessary
-    # if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
-    #     relaunch_remote(cfg, config_arg)
+    if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
+        relaunch_remote(cfg, config_arg)
 
     if os.environ.get(SOURCED_ENV) != '1':
         relaunch_with_ros_env(cfg)

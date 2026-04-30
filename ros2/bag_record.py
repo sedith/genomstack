@@ -14,7 +14,7 @@ SOURCED_ENV = 'GENOMSTACK_ROS2_SOURCED'
 ## relaunchers
 def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
-        f'cd {cfg.ros2.workspace} && '
+        f'cd {cfg.workspace} && '
         f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
     )
