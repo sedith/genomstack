@@ -1,0 +1,46 @@
+/rko_lio:
+    ros__parameters:
+        imu_frame: ""
+        imu_topic: /livox/imu
+        lidar_frame: ""
+        lidar_topic: /livox/lidar
+
+        base_frame: body_rko
+        odom_frame: map
+        odom_topic: /rko_lio/odometry
+        map_topic: /rko_lio/local_map
+
+        deskew: true
+        double_downsample: false
+        convergence_criterion: 1.0e-05
+        max_iterations: 100
+
+        max_correspondance_distance: 0.5
+        max_expected_jerk: 3.0
+        max_num_threads: 0
+        max_points_per_voxel: 20
+        max_range: 40.0
+        min_range: 1.5
+        min_beta: 200.0
+        voxel_size: 0.5
+
+        initialization_phase: true
+        lts_absolute_end_threshold_ms: 1
+        lts_absolute_start_threshold_ms: 1
+        lts_force_absolute: false
+        lts_force_relative: false
+        lts_multiplier_to_seconds: 0.0
+        lts_relative_end_threshold_ms: 10
+        lts_relative_start_threshold_ms: 10
+        
+        invert_odom_tf: false
+        publish_deskewed_scan: false
+        publish_lidar_acceleration: false
+        publish_local_map: true
+        publish_map_after: 1.0
+
+        # dump_results: false
+        # results_dir: results
+        # run_name: rko_lio_run
+        # extrinsic_imu2base_quat_xyzw_xyz: []
+        # extrinsic_lidar2base_quat_xyzw_xyz: []

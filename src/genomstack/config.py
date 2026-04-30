@@ -5,7 +5,7 @@ import yaml
 
 
 def find_workspace_root(start: Path | None = None) -> Path:
-    start = (start or Path.cwd()).resolve()
+    start = (start or Path(__file__)).resolve()  # works since genomstack is installed in editable mode
     for p in [start, *start.parents]:
         if (p / 'pyproject.toml').exists():
             return p
@@ -58,7 +58,6 @@ class Config(AttrDict):
         self.config_file = config_file
         self.components.rotorcraft.calib_file = self.root / 'calib' / self.components.rotorcraft.calib
         self.log_dir = self.root / 'logs' / time.strftime("%y%m%d_%H%M%S")
-        self.log_dir.mkdir(parents=True, exist_ok=True)
 
 
 def load_config(config_file: str | Path) -> Config:

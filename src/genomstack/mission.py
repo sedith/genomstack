@@ -1,22 +1,54 @@
 import os
-from genomstack import RobotIO
+from pathlib import Path
+import subprocess
+import sys
+from .robot_io import RobotIO
+from .utils import is_localhost
 
 class Mission:
     def __init__(self, io: RobotIO):
         self.io = io
+        self.bag_process = None
 
     ## log helpers
     def start_logs(self) -> None:
         print('start log')
+
+        ## logs genom
         for c in self.io.components.values():
             c.start_log()
 
+        ## record ros2bag
+        if 'bag' in self.io.cfg.ros2:
+            self.bag_process = subprocess.Popen([
+                sys.executable,
+                str(self.io.cfg.root / 'ros2/bag_record.py'),
+                str(self.io.cfg.config_file),
+            ])
+
     def stop_logs(self) -> None:
         print('stop log')
+
+        ## stop logs
         for c in self.io.components.values():
             c.stop_log()
-        for f in [f for f in os.listdir('/tmp/') if f.endswith('log')]:
-            os.rename(f'/tmp/{f}', f'{self.io.cfg.log_dir}/{f}')
+
+        ## stop bag record
+        if self.bag_process is not None:
+            self.bag_process.terminate()
+            self.bag_process.wait()
+            self.bag_process = None
+
+        ## fetch files
+        self.io.cfg.log_dir.mkdir(parents=True, exist_ok=True)
+        if is_localhost(self.io.cfg.host):
+            for f in Path('/tmp').glob('*.log'):
+                os.rename(str(f), f'{self.io.cfg.host}_{self.io.cfg.log_dir}/{f}')
+        else:
+            subprocess.run(['scp', f'{host}:/tmp/*.log', str(local_log_dir)], check=True)
+            subprocess.run(['scp', '-r', f'{host}:/tmp/bag', str(local_log_dir)], check=True)
+            subprocess.run(['ssh', host, 'rm -f /tmp/*.log'], check=True)
+
 
     ## mission helpers
     def spin(self) -> None:

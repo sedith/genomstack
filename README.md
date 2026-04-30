@@ -30,7 +30,6 @@ This assumes that the all robotpkg dependencies are installed and properly setup
 
 ### TODOs
 
-* handle genom running remotely on robot
-    * also scp logs?
-* port naming for instances etc -- for now, they are still hard coded
-* handle ros2 for lidar and have a script for publishing to pom
+* script to run genom components running remotely on robot
+* script for publishing to pom (lio relay)
+* gz lidar and imu to test stuff in sim

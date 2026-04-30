@@ -1,21 +1,6 @@
 host: porche
 plugin_path: /home/onepiece/devel/lib/genom/pocolibs/plugins
 
-mocap:
-    model: qualisys
-    host: 10.135.2.40
-    body: pcHexa2
-
-maneuver:
-    vmax: 1.5
-    wmax: 1
-    amax: 3
-    dwmax: 2
-
-rotorcraft:
-    serial: /dev/ttyACM0
-    calib: imucalib.json
-
 mass: 3.22
 geom:
     rotors: 6
@@ -25,19 +10,87 @@ geom:
     rx: -20
     rz: -1
 
-uavpos:
-    xyradius: 2
-    gain:
-        Kpxy: 20
-        Kpz: 15
-        Kvxy: 10
-        Kvz: 10
-        Kixy: 0
-        Kiz: 0
+components:
+    rotorcraft:
+        type: rotorcraft
+        serial: /dev/ttyACM0
+        calib: imucalib.json
 
-uavatt:
-    gain:
-        Kqxy: 15
-        Kqz: 15
-        Kwxy: 1.5
-        Kwz: 1
+    mocap:
+        model: qualisys
+        host: 10.135.2.40
+
+    pom_mocap:
+        type: pom
+        meas:
+            -
+                name: mocap
+                port: mocap/bodies/pcHexa2
+            -
+                name: imu
+                port: rotorcraft/imu
+
+    pom_lidar:
+        type: pom
+        meas:
+            -
+                name: lidar
+                port: /tmp/pom_lidar
+            -
+                name: imu
+                port: rotorcraft/imu
+                offset: [0, 0, -0.109, 0, 0, 0]
+
+    uavpos:
+        type: uavpos
+        xyradius: 2
+        gain:
+            Kpxy: 20
+            Kpz: 15
+            Kvxy: 10
+            Kvz: 10
+            Kixy: 0
+            Kiz: 0
+
+    uavatt:
+        type: uavatt
+        gain:
+            Kqxy: 15
+            Kqz: 15
+            Kwxy: 1.5
+            Kwz: 1
+
+    maneuver:
+        type: maneuver
+        vmax: 1.5
+        wmax: 1
+        amax: 3
+        dwmax: 2
+
+external_publishers:
+    lidar:
+        target: pom_lidar
+        publisher: measure
+        port: measure/imu
+        path: /tmp/pom_lidar
+
+ros2:
+    enabled: true
+    rviz: false
+
+    mode: livox  # none, livox or gazebo
+
+    setup:
+        - /opt/ros/humble/setup.bash
+        - ~/work/ws_livox/ros2/install/setup.bash
+
+    domain_id: 42
+
+    bag:
+        log_dir: /tmp
+        topics:
+          - /rko_lio/odometry
+          - /tf
+          - /tf_static
+          - /livox/lidar
+          - /livox/imu

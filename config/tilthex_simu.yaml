@@ -63,10 +63,10 @@ components:
 
     maneuver:
         type: maneuver
-        vmax: 3
+        vmax: 1
         wmax: 2
-        amax: 5
-        dwmax: 3
+        amax: 3
+        dwmax: 2
 
 external_publishers:
     lidar:
@@ -74,3 +74,24 @@ external_publishers:
         publisher: measure
         port: measure/imu
         path: /tmp/pom_lidar
+
+ros2:
+    enabled: true
+    rviz: false
+
+    mode: livox  # none, livox or gazebo
+
+    setup:
+        - /opt/ros/humble/setup.bash
+        - ~/work/ws_livox/ros2/install/setup.bash
+
+    domain_id: 42
+
+    bag:
+        log_dir: /tmp
+        topics:
+          - /rko_lio/odometry
+          - /tf
+          - /tf_static
+          - /livox/lidar
+          - /livox/imu

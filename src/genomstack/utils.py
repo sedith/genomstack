@@ -121,3 +121,8 @@ def hamilton_prod(q1, q2):
         q1[0]*q2[2] - q1[1]*q2[3] + q1[2]*q2[0] + q1[3]*q2[1],
         q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1] + q1[3]*q2[0]
     ])
+
+
+## host helper
+def is_localhost(host: str) -> bool:
+    return host in ('localhost', '127.0.0.1', '::1')
