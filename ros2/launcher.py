@@ -147,10 +147,10 @@ def make_launch_description(cfg):
     actions = []
 
     if mode == 'livox':
-        actions = node_tf_static() + node_livox() + [TimerAction(period=6.0, actions=node_rko(use_sim_time=False))]
+        actions = node_tf_static() + node_livox() + [TimerAction(period=3.0, actions=node_rko(use_sim_time=False))]
             
     elif mode == 'gazebo':
-        actions = node_tf_static() + node_gz_lidar() + [TimerAction(period=6.0, actions=node_rko(use_sim_time=False))]
+        actions = node_tf_static() + node_gz_lidar() + [TimerAction(period=3.0, actions=node_rko(use_sim_time=False))]
 
     elif mode == 'none':
         pass

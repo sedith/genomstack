@@ -10,7 +10,7 @@
         odom_topic: /rko_lio/odometry
         map_topic: /rko_lio/local_map
 
-        deskew: false
+        deskew: true
         double_downsample: false
         convergence_criterion: 1.0e-05
         max_iterations: 100

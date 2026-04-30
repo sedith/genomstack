@@ -7,7 +7,6 @@ from pathlib import Path
 from genomstack.config import Config
 from genomstack.utils import is_localhost
 
-ROOT = Path(__file__).resolve().parents[1]
 REMOTE_ENV = 'GENOMSTACK_BAG_REMOTE_EXEC'
 SOURCED_ENV = 'GENOMSTACK_ROS2_SOURCED'
 
@@ -36,7 +35,7 @@ def relaunch_with_ros_env(cfg: Config) -> None:
         setup_path = Path(setup)
 
         if not setup_path.is_absolute():
-            setup_path = ROOT / setup_path
+            setup_path = cfg.root / setup_path
 
         setup_cmds.append(f'source {shlex.quote(str(setup_path))}')
 
