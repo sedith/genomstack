@@ -21,6 +21,7 @@ if os.environ.get(SOURCED_ENV) == '1':
 ## relaunchers
 def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
+        f'source .bashrc && '
         f'cd {cfg.ros2.workspace} && '
         f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
@@ -62,7 +63,7 @@ def relaunch_with_ros_env(cfg: Config) -> None:
 
 
 ## node helpers
-def node_tf_static() -> list[Node]:
+def node_tf_static():
     return [
         Node(
             package='tf2_ros',
@@ -89,7 +90,7 @@ def node_tf_static() -> list[Node]:
     ]
 
 
-def node_rko(use_sim_time: bool) -> list[Node]:
+def node_rko(use_sim_time: bool):
     return [
         Node(
             package='rko_lio',
@@ -104,7 +105,7 @@ def node_rko(use_sim_time: bool) -> list[Node]:
         ),
     ]
 
-def node_livox() -> list[Node]:
+def node_livox():
     return [
         Node(
             package='livox_ros_driver2',
@@ -117,7 +118,7 @@ def node_livox() -> list[Node]:
         )
     ]
 
-def node_gz_lidar() -> list[Node]:
+def node_gz_lidar():
     return [
         Node(
             package='ros_gz_bridge',

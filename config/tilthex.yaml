@@ -76,13 +76,14 @@ external_publishers:
 
 ros2:
     enabled: true
+    workspace: ~/mjacquet/genom_obelix/
     rviz: false
 
     mode: livox  # none, livox or gazebo
 
     setup:
         - /opt/ros/humble/setup.bash
-        - ~/work/ws_livox/ros2/install/setup.bash
+        - ~/ws_ros_livox/install/setup.bash
 
     domain_id: 42
 
