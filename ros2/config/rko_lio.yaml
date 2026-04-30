@@ -10,7 +10,7 @@
         odom_topic: /rko_lio/odometry
         map_topic: /rko_lio/local_map
 
-        deskew: true
+        deskew: false
         double_downsample: false
         convergence_criterion: 1.0e-05
         max_iterations: 100
@@ -38,6 +38,10 @@
         publish_lidar_acceleration: false
         publish_local_map: true
         publish_map_after: 1.0
+
+        lidar_timestamps.multiplier_to_seconds: 1.0e-9
+        lidar_timestamps.force_absolute: true
+        lidar_timestamps.force_relative: false
 
         # dump_results: false
         # results_dir: results

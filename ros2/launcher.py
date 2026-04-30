@@ -15,6 +15,7 @@ REMOTE_ENV = 'GENOMSTACK_REMOTE_EXEC'
 if os.environ.get(SOURCED_ENV) == '1':
     from launch import LaunchService
     from launch import LaunchDescription
+    from launch.actions import TimerAction
     from launch_ros.actions import Node
 
 
@@ -146,10 +147,10 @@ def make_launch_description(cfg):
     actions = []
 
     if mode == 'livox':
-        actions = node_tf_static() + node_livox() + node_rko(use_sim_time=False)
-
+        actions = node_tf_static() + node_livox() + [TimerAction(period=6.0, actions=node_rko(use_sim_time=False))]
+            
     elif mode == 'gazebo':
-        actions = node_tf_static() + node_gz_lidar() + node_rko(use_sim_time=True)
+        actions = node_tf_static() + node_gz_lidar() + [TimerAction(period=6.0, actions=node_rko(use_sim_time=False))]
 
     elif mode == 'none':
         pass
@@ -179,8 +180,8 @@ def main():
         return 0
 
     ## relaunch script if necessary
-    if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
-        relaunch_remote(cfg, config_arg)
+    # if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
+    #     relaunch_remote(cfg, config_arg)
 
     if os.environ.get(SOURCED_ENV) != '1':
         relaunch_with_ros_env(cfg)
