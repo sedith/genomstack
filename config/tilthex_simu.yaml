@@ -79,7 +79,7 @@ ros2:
     enabled: true
     rviz: false
 
-    mode: livox  # none, livox or gazebo
+    mode: gazebo  # none, livox or gazebo
 
     setup:
         - /opt/ros/humble/setup.bash
