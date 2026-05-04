@@ -36,7 +36,7 @@ components:
         meas:
             -
                 name: lidar
-                port: /tmp/pom_lidar
+                port: ros2/lio
             -
                 name: imu
                 port: rotorcraft/imu
@@ -72,26 +72,19 @@ external_publishers:
     lidar:
         target: pom_lidar
         publisher: measure
-        port: measure/imu
-        path: /tmp/pom_lidar
+        port: ros2/lio
 
 ros2:
     enabled: true
+    domain_id: 42
     rviz: false
-
     mode: livox  # none, livox or gazebo
-
     setup:
         - /opt/ros/humble/setup.bash
         - ~/ws_ros_livox/install/setup.bash
-
-    domain_id: 42
-
     bag:
-        log_dir: /tmp
-        topics:
-          - /rko_lio/odometry
-          - /tf
-          - /tf_static
-          - /livox/lidar
-          - /livox/imu
+      - /rko_lio/odometry
+      - /tf
+      - /tf_static
+      - /livox/lidar
+      - /livox/imu

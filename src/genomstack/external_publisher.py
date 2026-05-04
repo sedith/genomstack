@@ -6,14 +6,9 @@ class ExternalPublisher:
         self.cfg = cfg
         self.name = name
         self.io = io
-        self.publisher = None
 
         make_publisher = getattr(self.target.handle, self.publisher_cfg.publisher)
-        self.publisher = make_publisher(self.publisher_cfg.path)
-        self.target.connect_port(
-            self.publisher_cfg.port,
-            self.publisher_cfg.path,
-        )
+        self.publisher = make_publisher(self.publisher_cfg.port)
         
     @property
     def publisher_cfg(self) -> Config:

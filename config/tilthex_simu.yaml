@@ -73,25 +73,19 @@ external_publishers:
         target: pom_lidar
         publisher: measure
         port: measure/imu
-        path: /tmp/pom_lidar
+        path: tmp/pom_lidar
 
 ros2:
     enabled: true
+    domain_id: 42
     rviz: false
-
     mode: gazebo  # none, livox or gazebo
-
     setup:
         - /opt/ros/humble/setup.bash
         - ~/work/ws_livox/ros2/install/setup.bash
-
-    domain_id: 42
-
     bag:
-        log_dir: /tmp
-        topics:
-          - /rko_lio/odometry
-          - /tf
-          - /tf_static
-          - /livox/lidar
-          - /livox/imu
+      - /rko_lio/odometry
+      - /tf
+      - /tf_static
+      - /livox/lidar
+      - /livox/imu

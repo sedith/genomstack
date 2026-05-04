@@ -14,6 +14,7 @@ SOURCED_ENV = 'GENOMSTACK_ROS2_SOURCED'
 ## relaunchers
 def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
+        f'source ~/.onepiece.bashrc && '
         f'cd {cfg.workspace} && '
         f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/bag_record.py {shlex.quote(config_arg)}'
@@ -65,7 +66,6 @@ def main():
 
     config_arg = sys.argv[1]
     cfg = Config(config_arg)
-    log_dir = Path(cfg.ros2.bag.log_dir)
 
     if not cfg.ros2.enabled:
         print('ros2 disabled')
@@ -75,26 +75,20 @@ def main():
         print('ros2 bag disabled')
         return 0
 
+    ## relaunch script if necessary
     if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
         relaunch_remote(cfg, config_arg)
 
     if os.environ.get(SOURCED_ENV) != '1':
         relaunch_with_ros_env(cfg)
 
-    if not cfg.ros2.bag.topics:
-        print('no ros2 bag topics configured')
-        return 1
-
-    bagfile = log_dir / 'bag'
-    bagfile.parent.mkdir(parents=True, exist_ok=True)
-
     cmd = [
         'ros2',
         'bag',
         'record',
         '-o',
-        str(bagfile),
-        *cfg.ros2.bag.topics,
+        '/tmp/bag',
+        *cfg.ros2.bag,
     ]
 
     os.execvp(cmd[0], cmd)
