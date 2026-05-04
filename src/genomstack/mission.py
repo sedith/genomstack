@@ -20,12 +20,13 @@ class Mission:
             c.start_log()
 
         ## record ros2bag
-        if 'bag' in self.io.cfg.ros2:
-            self.bag_process = subprocess.Popen([
-                sys.executable,
-                str(self.io.cfg.root / 'ros2/bag_record.py'),
-                str(self.io.cfg.config_file),
-            ])
+        # if 'bag' in self.io.cfg.ros2:
+        #     subprocess.run(['ssh', self.io.cfg.host, 'rm -r /tmp/genom_obelix/bag'], check=True)
+        #     self.bag_process = subprocess.Popen([
+        #         sys.executable,
+        #         str(self.io.cfg.root / 'ros2/bag_record.py'),
+        #         str(self.io.cfg.config_file.name),
+        #     ])
 
     def stop_logs(self) -> None:
         print('stop log')
@@ -44,12 +45,11 @@ class Mission:
         print(self.io.cfg.log_dir)
         self.io.cfg.log_dir.mkdir(parents=True, exist_ok=True)
         if is_localhost(self.io.cfg.host):
-            for f in Path('/tmp').glob('*.log'):
+            for f in Path('/tmp/genom_obelix/').glob('*'):
                 os.rename(str(f), f'{self.io.cfg.log_dir}/{f}')
         else:
-            subprocess.run(['scp', f'{self.io.cfg.host}:/tmp/*.log', f'{self.io.cfg.log_dir}'], check=True)
-            subprocess.run(['scp', '-r', f'{self.io.cfg.host}:/tmp/bag', f'{self.io.cfg.log_dir}'], check=True)
-            subprocess.run(['ssh', self.io.cfg.host, 'rm -f /tmp/*.log'], check=True)
+            subprocess.run(['scp', f'{self.io.cfg.host}:/tmp/genom_obelix/*', f'{self.io.cfg.log_dir}'], check=True)
+            subprocess.run(['ssh', self.io.cfg.host, 'rm -fd /tmp/genom_obelix/*'], check=True)
 
 
     ## mission helpers

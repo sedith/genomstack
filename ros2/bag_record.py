@@ -7,7 +7,7 @@ from pathlib import Path
 from genomstack.config import Config
 from genomstack.utils import is_localhost
 
-REMOTE_ENV = 'GENOMSTACK_BAG_REMOTE_EXEC'
+# REMOTE_ENV = 'GENOMSTACK_BAG_REMOTE_EXEC'
 SOURCED_ENV = 'GENOMSTACK_ROS2_SOURCED'
 
 
@@ -16,7 +16,7 @@ def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
         f'source ~/.onepiece.bashrc && '
         f'cd {cfg.workspace} && '
-        f'export {REMOTE_ENV}=1 && '
+        # f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/bag_record.py {shlex.quote(config_arg)}'
     )
 
@@ -30,11 +30,9 @@ def relaunch_remote(cfg: Config, config_arg: str) -> None:
 
 def relaunch_with_ros_env(cfg: Config) -> None:
     setup_cmds = []
-
     for setup in cfg.ros2.setup:
         setup = os.path.expandvars(os.path.expanduser(setup))
         setup_path = Path(setup)
-
         if not setup_path.is_absolute():
             setup_path = cfg.root / setup_path
 
@@ -76,7 +74,7 @@ def main():
         return 0
 
     ## relaunch script if necessary
-    if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
+    if not is_localhost(cfg.host):# and os.environ.get(REMOTE_ENV) != '1':
         relaunch_remote(cfg, config_arg)
 
     if os.environ.get(SOURCED_ENV) != '1':
@@ -87,7 +85,7 @@ def main():
         'bag',
         'record',
         '-o',
-        '/tmp/bag',
+        '/tmp/genom_obelix/bag',
         *cfg.ros2.bag,
     ]
 

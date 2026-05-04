@@ -1,3 +1,4 @@
+import socket
 import numpy as np
 
 
@@ -125,4 +126,4 @@ def hamilton_prod(q1, q2):
 
 ## host helper
 def is_localhost(host: str) -> bool:
-    return host in ('localhost', '127.0.0.1', '::1')
+    return host in ('localhost', '127.0.0.1', '::1', socket.gethostname())

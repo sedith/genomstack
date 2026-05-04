@@ -247,16 +247,17 @@ Important rules:
 ## TODO
 
 to be tested:
-* ROS 2 launcher
 * ROS bag start/stop from `Mission`
 * retrieve remote logs and bags
 
 to automatize:
+* source etc
 * domain_id
 * connection up for lidar
+* log folder creation
 
 to be implemented:
-* genom components launcher for local and remote hosts
+* genom components launcher for local and remote hosts using tmux
 * script to run genom components running remotely on robot
 * script for publishing to pom (lio relay)
 * gz lidar and imu to test stuff in sim

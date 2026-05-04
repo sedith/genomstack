@@ -44,7 +44,7 @@ class Component:
 
     def start_log(self) -> None:
         """Start component-specific logging."""
-        self.call('log', f'/tmp/{self.name}.log')
+        self.call('log', f'/tmp/genom_obelix/{self.name}.log')
 
     def stop_log(self) -> None:
         """Stop component-specific logging."""

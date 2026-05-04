@@ -2,7 +2,6 @@ from genomstack import RobotIO, Mission
 import time
 
 io = RobotIO('tilthex')
-io.setup()
 
 mission = Mission(io)
 mission.start_logs()

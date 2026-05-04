@@ -18,5 +18,5 @@ class Pom(Component):
             self.call('add_measurement', meas.name, *meas.offset if 'offset' in meas else [])
 
     def start_log(self) -> None:
-        self.call('log_state', f'/tmp/{self.name}.log')
-        self.call('log_measurements',  f'/tmp/{self.name}-measurements.log')
+        self.call('log_state', f'/tmp/genom_obelix/{self.name}.log')
+        self.call('log_measurements',  f'/tmp/genom_obelix/{self.name}-measurements.log')

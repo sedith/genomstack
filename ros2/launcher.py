@@ -9,7 +9,7 @@ from genomstack.utils import is_localhost
 ROOT = Path(__file__).resolve().parents[1]
 ROS_CONFIG_DIR = ROOT / 'ros2' / 'config'
 SOURCED_ENV = 'GENOMSTACK_ROS2_SOURCED'
-REMOTE_ENV = 'GENOMSTACK_REMOTE_EXEC'
+# REMOTE_ENV = 'GENOMSTACK_REMOTE_EXEC'
 
 ## import ros stuff only after sourcing
 if os.environ.get(SOURCED_ENV) == '1':
@@ -24,7 +24,7 @@ def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
         f'source ~/.onepiece.bashrc && '
         f'cd {cfg.workspace} && '
-        f'export {REMOTE_ENV}=1 && '
+        # f'export {REMOTE_ENV}=1 && '
         f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
     )
 
@@ -40,11 +40,9 @@ def relaunch_with_ros_env(cfg: Config) -> None:
     setup_cmds = []
     for setup in cfg.ros2.setup:
         setup = os.path.expandvars(os.path.expanduser(setup))
-
         setup_path = Path(setup)
         if not setup_path.is_absolute():
             setup_path = cfg.root / setup_path
-
         setup_cmds.append(f'source {shlex.quote(str(setup_path))}')
 
     env_cmds = [
@@ -180,7 +178,7 @@ def main():
         return 0
 
     ## relaunch script if necessary
-    if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
+    if not is_localhost(cfg.host):# and os.environ.get(REMOTE_ENV) != '1':
         relaunch_remote(cfg, config_arg)
 
     if os.environ.get(SOURCED_ENV) != '1':
