@@ -251,6 +251,10 @@ to be tested:
 * ROS bag start/stop from `Mission`
 * retrieve remote logs and bags
 
+to automatize:
+* domain_id
+* connection up for lidar
+
 to be implemented:
 * genom components launcher for local and remote hosts
 * script to run genom components running remotely on robot

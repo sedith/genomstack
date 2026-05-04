@@ -41,14 +41,15 @@ class Mission:
             self.bag_process = None
 
         ## fetch files
+        print(self.io.cfg.log_dir)
         self.io.cfg.log_dir.mkdir(parents=True, exist_ok=True)
         if is_localhost(self.io.cfg.host):
             for f in Path('/tmp').glob('*.log'):
-                os.rename(str(f), f'{self.io.cfg.host}_{self.io.cfg.log_dir}/{f}')
+                os.rename(str(f), f'{self.io.cfg.log_dir}/{f}')
         else:
-            subprocess.run(['scp', f'{host}:/tmp/*.log', str(local_log_dir)], check=True)
-            subprocess.run(['scp', '-r', f'{host}:/tmp/bag', str(local_log_dir)], check=True)
-            subprocess.run(['ssh', host, 'rm -f /tmp/*.log'], check=True)
+            subprocess.run(['scp', f'{self.io.cfg.host}:/tmp/*.log', f'{self.io.cfg.log_dir}'], check=True)
+            subprocess.run(['scp', '-r', f'{self.io.cfg.host}:/tmp/bag', f'{self.io.cfg.log_dir}'], check=True)
+            subprocess.run(['ssh', self.io.cfg.host, 'rm -f /tmp/*.log'], check=True)
 
 
     ## mission helpers

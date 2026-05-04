@@ -16,7 +16,7 @@ def relaunch_remote(cfg: Config, config_arg: str) -> None:
     remote_cmd = (
         f'cd {cfg.workspace} && '
         f'export {REMOTE_ENV}=1 && '
-        f'exec python3 ros2/launcher.py {shlex.quote(config_arg)}'
+        f'exec python3 ros2/bag_record.py {shlex.quote(config_arg)}'
     )
 
     os.execvp('ssh', [
@@ -64,16 +64,14 @@ def main():
         return 1
 
     config_arg = sys.argv[1]
+    cfg = Config(config_arg)
     log_dir = Path(cfg.ros2.bag.log_dir)
 
-    cfg = Config(config_arg)
-
-    if not cfg.ros2.get('enabled', False):
+    if not cfg.ros2.enabled:
         print('ros2 disabled')
         return 0
 
-    bag_cfg = cfg.ros2.get('bag', {})
-    if not bag_cfg.get('enabled', False):
+    if not cfg.ros2.bag:
         print('ros2 bag disabled')
         return 0
 
@@ -83,8 +81,7 @@ def main():
     if os.environ.get(SOURCED_ENV) != '1':
         relaunch_with_ros_env(cfg)
 
-    topics = bag_cfg.get('topics', [])
-    if not topics:
+    if not cfg.ros2.bag.topics:
         print('no ros2 bag topics configured')
         return 1
 
@@ -97,7 +94,7 @@ def main():
         'record',
         '-o',
         str(bagfile),
-        *topics,
+        *cfg.ros2.bag.topics,
     ]
 
     os.execvp(cmd[0], cmd)
