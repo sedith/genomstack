@@ -1,0 +1,42 @@
+# Logitech F710 gamepad configuration
+# Set the switch on the back of the controller to 'X' (XInput mode).
+#
+# Axis indices (pygame, XInput):
+#   0 : left  stick horizontal
+#   1 : left  stick vertical   (up = -1)
+#   2 : LT analogue
+#   3 : right stick horizontal
+#   4 : right stick vertical   (up = -1)
+#   5 : RT analogue
+#
+# Button indices (pygame, XInput):
+#   0 : A      1 : B      2 : X      3 : Y
+#   4 : LB     5 : RB
+#   6 : Back   7 : Start
+#   8 : Left stick click   9 : Right stick click
+
+buttons:
+  start: 7          # START  → arm & servo
+  back: 6           # BACK   → emergency stop & quit
+  takeoff: 3        # Y      → takeoff
+  land: 0           # A      → land
+  motors_off: 1     # B      → stop motors (disarm, keep session alive)
+  enable_manual: 4  # LB     → hold to send velocity commands
+
+axes:
+  vz:              # altitude:     left  stick vertical  (inverted: stick up → climb)
+    axis: 1
+    scale: -1.0
+  wz:              # yaw rate:     left  stick horizontal (inverted: stick right → turn right)
+    axis: 0
+    scale: -1.0
+  vx:              # fwd / back:   right stick vertical  (inverted: stick up → forward)
+    axis: 4
+    scale: -1.0
+  vy:              # left / right: right stick horizontal (stick right → move right)
+    axis: 3
+    scale: -1.0
+
+max_velocity: 0.5    # m/s  — peak linear speed per axis
+max_yaw_rate: 0.5    # rad/s — peak yaw rate
+deadzone: 0.1        # normalised axis deadzone [0, 1]
