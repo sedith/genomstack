@@ -65,7 +65,6 @@ def main():
         return 1
 
     config_arg = sys.argv[1]
-    log_dir = Path(cfg.ros2.bag.log_dir)
 
     cfg = Config(config_arg)
 
@@ -77,6 +76,8 @@ def main():
     if not bag_cfg.get('enabled', False):
         print('ros2 bag disabled')
         return 0
+
+    log_dir = Path(cfg.ros2.bag.log_dir)
 
     if not is_localhost(cfg.host) and os.environ.get(REMOTE_ENV) != '1':
         relaunch_remote(cfg, config_arg)
