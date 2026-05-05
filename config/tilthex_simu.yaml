@@ -1,12 +1,12 @@
 host: localhost
 plugin_path: ""
 
-mass: 2.8
+mass: 2.7
 geom:
     rotors: 6
     armlen: 0.39
-    cf: 12.5e-4
-    ct: 2.5e-5
+    cf: 9.9016e-4
+    ct: 1.9e-5
     rx: -20
     rz: -1
 
