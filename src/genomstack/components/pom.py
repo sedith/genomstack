@@ -1,4 +1,9 @@
+import time
+from genomix.event import GenoMError
 from .base import Component
+
+_PORT_RETRY_INTERVAL = 0.5  # seconds between retries
+_PORT_RETRY_TIMEOUT = 10.0  # seconds before giving up
 
 
 class Pom(Component):
@@ -14,8 +19,20 @@ class Pom(Component):
         })
 
         for meas in self.component_cfg.meas:
-            self.connect_port(f'measure/{meas.name}', meas.port)
+            self._connect_port_with_retry(f'measure/{meas.name}', meas.port)
             self.call('add_measurement', meas.name, *meas.offset if 'offset' in meas else [])
+
+    def _connect_port_with_retry(self, local: str, remote: str) -> None:
+        deadline = time.monotonic() + _PORT_RETRY_TIMEOUT
+        while True:
+            try:
+                self.connect_port(local, remote)
+                return
+            except GenoMError as e:
+                if 'no_such_outport' not in str(e) or time.monotonic() >= deadline:
+                    raise
+                print(f'{self.name}: port {remote!r} not ready, retrying...')
+                time.sleep(_PORT_RETRY_INTERVAL)
 
     def start_log(self) -> None:
         self.call('log_state', f'/tmp/{self.name}.log')
