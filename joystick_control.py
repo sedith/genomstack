@@ -8,7 +8,7 @@ io.setup()
 mission = Mission(io)
 mission.spin()
 
-ctrl = JoystickController(mission)
+ctrl = JoystickController(mission, show_gui=True)
 
 # --- register custom button sequences ---
 # The callback runs in a background thread, so blocking (ack=True) calls
@@ -25,7 +25,7 @@ def survey2():
 # bind to the X button — 'x' is a named alias in joystick_f710.yaml for
 # index 2, which has no built-in action and is free for custom use.
 # You can also pass a raw button index (int) for any other unclaimed button.
-ctrl.register_button_cycle('x', [survey1, survey2], labels=['Survey 1', 'Survey 2'])
+ctrl.register_button_cycle('x', [survey1, survey2], labels=['Survey part 1', 'Survey part 2'])
 
 ctrl.print_help()
 ctrl.run()

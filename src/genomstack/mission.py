@@ -9,6 +9,7 @@ class Mission:
     def __init__(self, io: RobotIO):
         self.io = io
         self.bag_process = None
+        self._spinning = False
 
     ## log helpers
     def start_logs(self) -> None:
@@ -18,8 +19,8 @@ class Mission:
         for c in self.io.components.values():
             c.start_log()
 
-        ## record ros2bag
-        if 'bag' in self.io.cfg.ros2:
+        ## record ros2bag (avoid spawning a duplicate if already running)
+        if 'bag' in self.io.cfg.ros2 and self.bag_process is None:
             self.bag_process = subprocess.Popen([
                 sys.executable,
                 str(self.io.cfg.root / 'ros2/bag_record.py'),
@@ -55,11 +56,14 @@ class Mission:
         print(f'spinning...')
         self.start_logs()
         self.io.components['rotorcraft'].call('start')
+        self._spinning = True
 
     def start(self, prompt=False) -> None:
         if prompt:
             input('start?')
         print(f'starting...')
+        if not self._spinning:
+            self.spin()
         self.io.components['rotorcraft'].call('servo', ack=True)
         self.io.components['maneuver'].call('set_current_state')
         self.io.components['maneuver'].call('take_off', 0.25, 5, ack=True)
@@ -89,4 +93,5 @@ class Mission:
         if prompt:
             input('stop?')
         self.io.components['rotorcraft'].call('stop')
+        self._spinning = False
         self.stop_logs()

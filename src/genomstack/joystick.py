@@ -12,11 +12,9 @@ from typing import Callable, TYPE_CHECKING
 if TYPE_CHECKING:
     from .mission import Mission
 
-# Suppress pygame stdout noise; dummy drivers allow headless use
-os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
-os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+import pygame  # noqa: E402
 
-import pygame  # noqa: E402  (must come after env vars)
+from .joystick_gui import JoystickGUI
 
 
 _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent.parent / 'config' / 'joystick_f710.yaml'
@@ -48,6 +46,7 @@ class JoystickController:
         self,
         mission: Mission,
         config: dict | str | Path | None = None,
+        show_gui: bool = False,
     ) -> None:
         self.mission = mission
 
@@ -58,10 +57,14 @@ class JoystickController:
                 config = yaml.safe_load(f)
         self.cfg = config
 
+        self._show_gui = show_gui
+        self._gui: JoystickGUI | None = None
+
         self._running = False
         self._joystick: pygame.joystick.JoystickType | None = None
         self._custom_buttons: dict[int, tuple[str, Callable]] = {}
         self._cycle_buttons: dict[int, dict] = {}
+        self._active_button: int | None = None
         self._sequence_thread: threading.Thread | None = None
         self._manual_thread: threading.Thread | None = None
         self._manual_stop = threading.Event()
@@ -177,6 +180,11 @@ class JoystickController:
     # ------------------------------------------------------------------
 
     def _init_pygame(self) -> None:
+        if not self._show_gui:
+            os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
+            os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+        # Deliver joystick events even when the pygame window is not focused.
+        os.environ.setdefault('SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS', '1')
         pygame.init()
         pygame.joystick.init()
         n = pygame.joystick.get_count()
@@ -186,6 +194,9 @@ class JoystickController:
             )
         self._joystick = pygame.joystick.Joystick(0)
         self._joystick.init()
+        if self._show_gui:
+            self._gui = JoystickGUI(self.cfg)
+            self._gui.init(self._joystick.get_name())
 
     def _deadzone(self, value: float) -> float:
         dz = self.cfg.get('deadzone', 0.1)
@@ -199,16 +210,20 @@ class JoystickController:
     def _read_button(self, name: str) -> bool:
         return bool(self._joystick.get_button(self.cfg['buttons'][name]))
 
-    def _run_sequence(self, name: str, cb: Callable) -> None:
+    def _run_sequence(self, name: str, cb: Callable, button_index: int | None = None) -> None:
         # Hold the lock for the entire sequence: prevents manual velocity
         # commands from interrupting goto activities, and prevents concurrent
         # event.mux.wait() calls from stealing each other's done-events.
-        with self._genomix_lock:
-            try:
-                cb()
-                print(f"[joystick] {name}: done")
-            except Exception as exc:
-                print(f"[joystick] {name}: error — {exc}")
+        self._active_button = button_index
+        try:
+            with self._genomix_lock:
+                try:
+                    cb()
+                    print(f"[joystick] {name}: done")
+                except Exception as exc:
+                    print(f"[joystick] {name}: error — {exc}")
+        finally:
+            self._active_button = None
 
     def _manual_loop(self) -> None:
         """50 Hz background thread: send velocity commands while LB is held.
@@ -260,7 +275,10 @@ class JoystickController:
 
             # ---- event-driven button presses ----
             for event in pygame.event.get():
-                if event.type == pygame.JOYBUTTONDOWN:
+                if event.type == pygame.QUIT:
+                    print("[joystick] window closed → stopping")
+                    self._running = False
+                elif event.type == pygame.JOYBUTTONDOWN:
                     b = event.button
                     if b == btn['back']:
                         print("[joystick] BACK → emergency stop")
@@ -282,7 +300,7 @@ class JoystickController:
                     elif b == btn['motors_off']:
                         print("[joystick] B → motors off")
                         with self._genomix_lock:
-                            self.mission.io.components['rotorcraft'].call('stop')
+                            self.mission.stop()
                     elif b in self._custom_buttons:
                         seq_name, cb = self._custom_buttons[b]
                         if self._sequence_thread and self._sequence_thread.is_alive():
@@ -291,7 +309,7 @@ class JoystickController:
                             print(f"[joystick] {seq_name}: starting")
                             self._sequence_thread = threading.Thread(
                                 target=self._run_sequence,
-                                args=(seq_name, cb),
+                                args=(seq_name, cb, b),
                                 daemon=True,
                             )
                             self._sequence_thread.start()
@@ -308,7 +326,7 @@ class JoystickController:
                             entry['index'] = (idx + 1) % n
                             self._sequence_thread = threading.Thread(
                                 target=self._run_sequence,
-                                args=(seq_name, cb),
+                                args=(seq_name, cb, b),
                                 daemon=True,
                             )
                             self._sequence_thread.start()
@@ -317,3 +335,11 @@ class JoystickController:
             remaining = dt - elapsed
             if remaining > 0:
                 time.sleep(remaining)
+            if self._gui is not None:
+                self._gui.draw(
+                    self._joystick,
+                    self._read_axis,
+                    self._custom_buttons,
+                    self._cycle_buttons,
+                    self._active_button,
+                )
