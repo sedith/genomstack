@@ -1,7 +1,7 @@
 host: localhost
 plugin_path: ""
 
-mass: 2.5
+mass: 2.8
 geom:
     rotors: 6
     armlen: 0.39
