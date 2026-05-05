@@ -55,7 +55,7 @@
             <uri>model://mrsim-tilthex</uri>
             <name>tx</name>
         </include>
-        <link_name="imu_link">
+        <link name="imu_link">
             <sensor name="imu" type="imu">
                 <always_on>1</always_on>
                 <update_rate>200</update_rate>
