@@ -1,0 +1,71 @@
+[workspace]
+authors = ["Martin Jacquet <martin.jacquet@inria.fr>", "Tommaso Belvedere <tommaso.belvedere@irisa.fr>"]
+channels = ["conda-forge"]
+name = "genom_obelix"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[activation]
+scripts = ["pixi/activation.sh"]
+
+[tasks]
+checkout = { cmd = "sh ./pixi/checkout.sh" }
+build = { cmd = "sh ./pixi/build.sh" }
+start = { cmd = "sh ./bin/start_genom.sh" }
+kill = { cmd = "sh ./bin/kill_genom.sh" }
+
+[tasks.sim]
+args = [
+  { "arg" = "world_file", "default" = "gz/quad.world" },
+]
+cmd = "gz sim -v 4 -r {{ world_file }}"
+
+[dependencies]
+# build toolchain
+c-compiler = "*"
+cxx-compiler = "*"
+autoconf = "*"
+automake = "*"
+libtool = "*"
+make = "*"
+pkg-config = "*"
+git = ">=2.47.0"
+cmake = "*"
+flex = "*"
+bison = "*"
+tcllib = "*"     # genom3
+libtirpc = "*"   # pocolibs
+eigen = "*"      # rotorcraft
+libudev = "*"
+asciidoctor = "*"
+proxsuite = "*"  # nhfc
+# gazebo simulation
+gz-sim = "<10"
+libgz-launch = ">=8,<9"
+gz-plugin = ">=4.0.0,<5"
+# python
+numpy = ">=1.24"
+pyyaml = ">=6.0"
+
+[pypi-dependencies]
+genomstack = { path = ".", editable = true }
+
+# ----------------
+# Optional ROS2 feature (via RoboStack)
+# Activate with: pixi install -e ros2 / pixi run -e ros2 <task>
+# ----------------
+
+[feature.ros2]
+channels = ["https://prefix.dev/robostack-jazzy"]
+
+[feature.ros2.dependencies]
+ros-jazzy-ros-base = "*"
+ros-jazzy-launch = "*"
+ros-jazzy-launch-ros = "*"
+
+[feature.ros2.activation]
+scripts = ["pixi/activation_ros2.sh"]
+
+[environments]
+default = { solve-group = "default" }
+ros2 = { features = ["ros2"], solve-group = "ros2" }
