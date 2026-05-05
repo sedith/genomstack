@@ -62,6 +62,12 @@ class JoystickController:
         self._joystick: pygame.joystick.JoystickType | None = None
         self._custom_buttons: dict[int, tuple[str, Callable]] = {}
         self._sequence_thread: threading.Thread | None = None
+        self._manual_thread: threading.Thread | None = None
+        self._manual_stop = threading.Event()
+        # Serialise ALL genomix calls across threads: the genomix event loop
+        # (event.mux.wait) is not thread-safe and a concurrent call can
+        # silently consume a done-event meant for another thread's .wait().
+        self._genomix_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public interface
@@ -99,9 +105,18 @@ class JoystickController:
         self._init_pygame()
         print(f"[joystick] connected: {self._joystick.get_name()}")
         self._running = True
+        self._manual_stop.clear()
+        self._manual_thread = threading.Thread(
+            target=self._manual_loop,
+            daemon=True,
+            name='joystick-manual',
+        )
+        self._manual_thread.start()
         try:
             self._loop()
         finally:
+            self._manual_stop.set()
+            self._manual_thread.join(timeout=1.0)
             pygame.quit()
 
     def print_help(self) -> None:
@@ -150,25 +165,60 @@ class JoystickController:
         return bool(self._joystick.get_button(self.cfg['buttons'][name]))
 
     def _run_sequence(self, name: str, cb: Callable) -> None:
-        try:
-            cb()
-            print(f"[joystick] {name}: done")
-        except Exception as exc:
-            print(f"[joystick] {name}: error — {exc}")
+        # Hold the lock for the entire sequence: prevents manual velocity
+        # commands from interrupting goto activities, and prevents concurrent
+        # event.mux.wait() calls from stealing each other's done-events.
+        with self._genomix_lock:
+            try:
+                cb()
+                print(f"[joystick] {name}: done")
+            except Exception as exc:
+                print(f"[joystick] {name}: error — {exc}")
 
-    def _zero_velocity(self) -> None:
-        self.mission.io.components['maneuver'].call(
-            'velocity',
-            vx=0, vy=0, vz=0, wz=0,
-            ax=0, ay=0, az=0, duration=0,
-        )
+    def _manual_loop(self) -> None:
+        """50 Hz background thread: send velocity commands while LB is held.
 
-    def _loop(self) -> None:
-        btn = self.cfg['buttons']
+        Acquires _genomix_lock before each send, so manual control is
+        automatically overridden by any other genomix operation (sequences,
+        button handlers) that also holds the lock.
+        """
         max_vel = self.cfg.get('max_velocity', 0.5)
         max_yaw = self.cfg.get('max_yaw_rate', 0.5)
         dt = 1.0 / self.CONTROL_RATE
-        _manual_was_active = False
+        _was_active = False
+        while not self._manual_stop.is_set():
+            t0 = time.monotonic()
+            active = self._read_button('enable_manual')
+            if active:
+                vx = self._read_axis('vx') * max_vel
+                vy = self._read_axis('vy') * max_vel
+                vz = self._read_axis('vz') * max_vel
+                wz = self._read_axis('wz') * max_yaw
+                with self._genomix_lock:
+                    self.mission.io.components['maneuver'].call(
+                        'velocity',
+                        vx=vx, vy=vy, vz=vz, wz=wz,
+                        ax=0, ay=0, az=0, duration=0,
+                        oneway=True,
+                    )
+            elif _was_active:
+                # LB just released — send one zero-velocity command
+                with self._genomix_lock:
+                    self.mission.io.components['maneuver'].call(
+                        'velocity',
+                        vx=0, vy=0, vz=0, wz=0,
+                        ax=0, ay=0, az=0, duration=0,
+                        oneway=True,
+                    )
+            _was_active = active
+            elapsed = time.monotonic() - t0
+            remaining = dt - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
+
+    def _loop(self) -> None:
+        btn = self.cfg['buttons']
+        dt = 1.0 / self.CONTROL_RATE
 
         while self._running:
             t0 = time.monotonic()
@@ -179,20 +229,25 @@ class JoystickController:
                     b = event.button
                     if b == btn['back']:
                         print("[joystick] BACK → emergency stop")
-                        self.mission.stop()
+                        with self._genomix_lock:
+                            self.mission.stop()
                         self._running = False
                     elif b == btn['start']:
                         print("[joystick] START → arm & servo")
-                        self.mission.start()
+                        with self._genomix_lock:
+                            self.mission.start()
                     elif b == btn['takeoff']:
                         print("[joystick] Y → takeoff")
-                        self.mission.takeoff()
+                        with self._genomix_lock:
+                            self.mission.takeoff()
                     elif b == btn['land']:
                         print("[joystick] A → land")
-                        self.mission.land()
+                        with self._genomix_lock:
+                            self.mission.land()
                     elif b == btn['motors_off']:
                         print("[joystick] B → motors off")
-                        self.mission.io.components['rotorcraft'].call('stop')
+                        with self._genomix_lock:
+                            self.mission.io.components['rotorcraft'].call('stop')
                     elif b in self._custom_buttons:
                         seq_name, cb = self._custom_buttons[b]
                         if self._sequence_thread and self._sequence_thread.is_alive():
@@ -205,23 +260,6 @@ class JoystickController:
                                 daemon=True,
                             )
                             self._sequence_thread.start()
-
-            # ---- continuous velocity control (hold LB to enable) ----
-            manual_active = self._read_button('enable_manual')
-            if manual_active:
-                vx = self._read_axis('vx') * max_vel
-                vy = self._read_axis('vy') * max_vel
-                vz = self._read_axis('vz') * max_vel
-                wz = self._read_axis('wz') * max_yaw
-                self.mission.io.components['maneuver'].call(
-                    'velocity',
-                    vx=vx, vy=vy, vz=vz, wz=wz,
-                    ax=0, ay=0, az=0, duration=0,
-                )
-            elif _manual_was_active:
-                # LB just released — zero out velocity immediately
-                self._zero_velocity()
-            _manual_was_active = manual_active
 
             elapsed = time.monotonic() - t0
             remaining = dt - elapsed

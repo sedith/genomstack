@@ -21,6 +21,7 @@ buttons:
   takeoff: 3        # Y      → takeoff
   land: 0           # A      → land
   motors_off: 1     # B      → stop motors (disarm, keep session alive)
+  x: 2              # X      → free slot for custom sequences
   enable_manual: 4  # LB     → hold to send velocity commands
 
 axes:

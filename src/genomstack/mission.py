@@ -77,13 +77,13 @@ class Mission:
         if prompt:
             input('goto?')
         print(f'goto: {x:.2f} {y:.2f} {z:.2f} [m] -- {yaw:.2f} [rad] -- duration {duration}s')
-        self.io.components['maneuver'].call('goto', x, y, z, yaw, duration, ack=True)
+        return self.io.components['maneuver'].call('goto', x, y, z, yaw, duration, ack=True)
 
     def land(self, z=0.25, duration=0, prompt=False) -> None:
         if prompt:
             input('land?')
         print(f'landing: {z:.2f} [m]')
-        self.io.components['maneuver'].call('take_off', z, duration, ack=True)
+        return self.io.components['maneuver'].call('take_off', z, duration, ack=True)
 
     def stop(self, prompt=False) -> None:
         if prompt:
