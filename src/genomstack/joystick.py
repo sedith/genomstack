@@ -61,6 +61,7 @@ class JoystickController:
         self._running = False
         self._joystick: pygame.joystick.JoystickType | None = None
         self._custom_buttons: dict[int, tuple[str, Callable]] = {}
+        self._cycle_buttons: dict[int, dict] = {}
         self._sequence_thread: threading.Thread | None = None
         self._manual_thread: threading.Thread | None = None
         self._manual_stop = threading.Event()
@@ -99,6 +100,40 @@ class JoystickController:
             index = int(button)
         name = label or callback.__name__
         self._custom_buttons[index] = (name, callback)
+
+    def register_button_cycle(
+        self,
+        button: str | int,
+        callbacks: list[Callable],
+        labels: list[str] | None = None,
+    ) -> None:
+        """Bind a list of callbacks to a button that cycles through them.
+
+        Each press advances to the next callback in the list (wrapping around).
+        The same threading rules as :meth:`register_button` apply.
+
+        Args:
+            button:    Named key from the config ``buttons`` section or a raw
+                       pygame button index.
+            callbacks: Ordered list of zero-argument callables to cycle through.
+            labels:    Optional list of human-readable names, one per callback.
+                       Defaults to each callable's ``__name__``.
+        """
+        if not callbacks:
+            raise ValueError("callbacks list must not be empty")
+        if isinstance(button, str):
+            index = self.cfg['buttons'][button]
+        else:
+            index = int(button)
+        if labels is None:
+            labels = [cb.__name__ for cb in callbacks]
+        if len(labels) != len(callbacks):
+            raise ValueError("labels and callbacks must have the same length")
+        self._cycle_buttons[index] = {
+            'labels': labels,
+            'callbacks': callbacks,
+            'index': 0,
+        }
 
     def run(self) -> None:
         """Connect to the joystick and start the blocking control loop."""
@@ -254,6 +289,23 @@ class JoystickController:
                             print(f"[joystick] {seq_name}: sequence already running, ignoring")
                         else:
                             print(f"[joystick] {seq_name}: starting")
+                            self._sequence_thread = threading.Thread(
+                                target=self._run_sequence,
+                                args=(seq_name, cb),
+                                daemon=True,
+                            )
+                            self._sequence_thread.start()
+                    elif b in self._cycle_buttons:
+                        entry = self._cycle_buttons[b]
+                        idx = entry['index']
+                        seq_name = entry['labels'][idx]
+                        cb = entry['callbacks'][idx]
+                        n = len(entry['callbacks'])
+                        if self._sequence_thread and self._sequence_thread.is_alive():
+                            print(f"[joystick] {seq_name}: sequence already running, ignoring")
+                        else:
+                            print(f"[joystick] {seq_name}: starting ({idx + 1}/{n})")
+                            entry['index'] = (idx + 1) % n
                             self._sequence_thread = threading.Thread(
                                 target=self._run_sequence,
                                 args=(seq_name, cb),
