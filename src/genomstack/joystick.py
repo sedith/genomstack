@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 import time
+import threading
 import yaml
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .mission import Mission
@@ -59,10 +60,39 @@ class JoystickController:
 
         self._running = False
         self._joystick: pygame.joystick.JoystickType | None = None
+        self._custom_buttons: dict[int, tuple[str, Callable]] = {}
+        self._sequence_thread: threading.Thread | None = None
 
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
+
+    def register_button(
+        self,
+        button: str | int,
+        callback: Callable,
+        label: str | None = None,
+    ) -> None:
+        """Bind a custom callback to a button.
+
+        The callback runs in a background thread so blocking sequences
+        (e.g. a series of ``mission.goto(…, ack=True)`` calls) do not
+        stall the control loop.  Only one custom sequence runs at a time;
+        pressing the button while a sequence is already running is ignored.
+
+        Args:
+            button: Either a named key from the config ``buttons`` section
+                    (e.g. ``'x'``) or a raw pygame button index (int).
+            callback: Zero-argument callable to execute on button press.
+            label:    Optional human-readable description shown in the help
+                      text and log messages.  Defaults to the callback name.
+        """
+        if isinstance(button, str):
+            index = self.cfg['buttons'][button]
+        else:
+            index = int(button)
+        name = label or callback.__name__
+        self._custom_buttons[index] = (name, callback)
 
     def run(self) -> None:
         """Connect to the joystick and start the blocking control loop."""
@@ -119,11 +149,26 @@ class JoystickController:
     def _read_button(self, name: str) -> bool:
         return bool(self._joystick.get_button(self.cfg['buttons'][name]))
 
+    def _run_sequence(self, name: str, cb: Callable) -> None:
+        try:
+            cb()
+            print(f"[joystick] {name}: done")
+        except Exception as exc:
+            print(f"[joystick] {name}: error — {exc}")
+
+    def _zero_velocity(self) -> None:
+        self.mission.io.components['maneuver'].call(
+            'velocity',
+            vx=0, vy=0, vz=0, wz=0,
+            ax=0, ay=0, az=0, duration=0,
+        )
+
     def _loop(self) -> None:
         btn = self.cfg['buttons']
         max_vel = self.cfg.get('max_velocity', 0.5)
         max_yaw = self.cfg.get('max_yaw_rate', 0.5)
         dt = 1.0 / self.CONTROL_RATE
+        _manual_was_active = False
 
         while self._running:
             t0 = time.monotonic()
@@ -148,9 +193,22 @@ class JoystickController:
                     elif b == btn['motors_off']:
                         print("[joystick] B → motors off")
                         self.mission.io.components['rotorcraft'].call('stop')
+                    elif b in self._custom_buttons:
+                        seq_name, cb = self._custom_buttons[b]
+                        if self._sequence_thread and self._sequence_thread.is_alive():
+                            print(f"[joystick] {seq_name}: sequence already running, ignoring")
+                        else:
+                            print(f"[joystick] {seq_name}: starting")
+                            self._sequence_thread = threading.Thread(
+                                target=self._run_sequence,
+                                args=(seq_name, cb),
+                                daemon=True,
+                            )
+                            self._sequence_thread.start()
 
             # ---- continuous velocity control (hold LB to enable) ----
-            if self._read_button('enable_manual'):
+            manual_active = self._read_button('enable_manual')
+            if manual_active:
                 vx = self._read_axis('vx') * max_vel
                 vy = self._read_axis('vy') * max_vel
                 vz = self._read_axis('vz') * max_vel
@@ -160,6 +218,10 @@ class JoystickController:
                     vx=vx, vy=vy, vz=vz, wz=wz,
                     ax=0, ay=0, az=0, duration=0,
                 )
+            elif _manual_was_active:
+                # LB just released — zero out velocity immediately
+                self._zero_velocity()
+            _manual_was_active = manual_active
 
             elapsed = time.monotonic() - t0
             remaining = dt - elapsed
