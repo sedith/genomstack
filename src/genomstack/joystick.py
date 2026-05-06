@@ -82,6 +82,10 @@ class JoystickController:
         # silently consume a done-event meant for another thread's .wait().
         self._genomix_lock = threading.Lock()
         self._cached_state: dict | None = None
+        # Raw registrations — resolved to button indices after _init_pygame()
+        # finalises self.cfg (needed when config uses a 'controllers' map).
+        self._button_registrations: list[tuple] = []
+        self._cycle_registrations:  list[tuple] = []
 
     # ------------------------------------------------------------------
     # Public interface
@@ -107,12 +111,7 @@ class JoystickController:
             label:    Optional human-readable description shown in the help
                       text and log messages.  Defaults to the callback name.
         """
-        if isinstance(button, str):
-            index = self.cfg['buttons'][button]
-        else:
-            index = int(button)
-        name = label or callback.__name__
-        self._custom_buttons[index] = (name, callback)
+        self._button_registrations.append((button, label or callback.__name__, callback))
 
     def register_button_cycle(
         self,
@@ -134,23 +133,29 @@ class JoystickController:
         """
         if not callbacks:
             raise ValueError("callbacks list must not be empty")
-        if isinstance(button, str):
-            index = self.cfg['buttons'][button]
-        else:
-            index = int(button)
         if labels is None:
             labels = [cb.__name__ for cb in callbacks]
         if len(labels) != len(callbacks):
             raise ValueError("labels and callbacks must have the same length")
-        self._cycle_buttons[index] = {
-            'labels': labels,
-            'callbacks': callbacks,
-            'index': 0,
-        }
+        self._cycle_registrations.append((button, labels, callbacks))
+
+    def _apply_button_registrations(self) -> None:
+        """Resolve deferred button registrations now that self.cfg is final."""
+        for button, name, callback in self._button_registrations:
+            index = self.cfg['buttons'][button] if isinstance(button, str) else int(button)
+            self._custom_buttons[index] = (name, callback)
+        for button, labels, callbacks in self._cycle_registrations:
+            index = self.cfg['buttons'][button] if isinstance(button, str) else int(button)
+            self._cycle_buttons[index] = {
+                'labels': labels,
+                'callbacks': callbacks,
+                'index': 0,
+            }
 
     def run(self) -> None:
         """Connect to the joystick and start the blocking control loop."""
         self._init_pygame()
+        self._apply_button_registrations()
         print(f"[joystick] connected: {self._joystick.get_name()}")
         self._running = True
         self._manual_stop.clear()
