@@ -2,25 +2,46 @@
 authors = ["Martin Jacquet <martin.jacquet@inria.fr>", "Tommaso Belvedere <tommaso.belvedere@irisa.fr>"]
 channels = ["conda-forge"]
 name = "genom_obelix"
-platforms = ["linux-64"]
 version = "0.1.0"
+platforms = ["linux-64", "osx-arm64", "osx-64"]
 
-[activation]
+# ---------------------------------------------------------
+# macOS / Clean Base Environment
+# ---------------------------------------------------------
+[dependencies]
+python = ">=3.10"
+numpy = ">=1.24"
+pyyaml = ">=6.0"
+pygame = ">=2.5"
+
+[pypi-dependencies]
+genomstack = { path = ".", editable = true }
+genomix = { git = "https://gitlab.inria.fr/tbelvede/python-genomix.git" }
+
+
+# ---------------------------------------------------------
+# Linux-Only Feature (Your Heavy Build Environment)
+# ---------------------------------------------------------
+[feature.linux_core]
+# Notice: No strict `platforms` array here anymore!
+
+# Everything below is safely tucked behind the linux-64 target
+[feature.linux_core.target.linux-64.activation]
 scripts = ["pixi/activation.sh"]
 
-[tasks]
+[feature.linux_core.target.linux-64.tasks]
 checkout = { cmd = "sh ./pixi/checkout.sh" }
 build = { cmd = "sh ./pixi/build.sh" }
 start = { cmd = "sh ./bin/start_genom.sh" }
 kill = { cmd = "sh ./bin/kill_genom.sh" }
 
-[tasks.sim]
+[feature.linux_core.target.linux-64.tasks.sim]
 args = [
   { "arg" = "world_file", "default" = "gz/quad.world" },
 ]
 cmd = "gz sim -v 4 -r {{ world_file }}"
 
-[dependencies]
+[feature.linux_core.target.linux-64.dependencies]
 # build toolchain
 c-compiler = "*"
 cxx-compiler = "*"
@@ -43,30 +64,32 @@ proxsuite = "*"  # nhfc
 gz-sim = "<10"
 libgz-launch = ">=8,<9"
 gz-plugin = ">=4.0.0,<5"
-# python
-numpy = ">=1.24"
-pyyaml = ">=6.0"
-pygame = ">=2.5"
 
-[pypi-dependencies]
-genomstack = { path = ".", editable = true }
 
-# ----------------
+# ---------------------------------------------------------
 # Optional ROS2 feature (via RoboStack)
-# Activate with: pixi install -e ros2 / pixi run -e ros2 <task>
-# ----------------
-
+# ---------------------------------------------------------
 [feature.ros2]
 channels = ["https://prefix.dev/robostack-jazzy"]
 
-[feature.ros2.dependencies]
+[feature.ros2.target.linux-64.dependencies]
 ros-jazzy-ros-base = "*"
 ros-jazzy-launch = "*"
 ros-jazzy-launch-ros = "*"
 
-[feature.ros2.activation]
+[feature.ros2.target.linux-64.activation]
 scripts = ["pixi/activation_ros2.sh"]
 
+
+# ---------------------------------------------------------
+# Environments Setup
+# ---------------------------------------------------------
 [environments]
+# The default environment resolves on all platforms using just the base [dependencies]
 default = { solve-group = "default" }
-ros2 = { features = ["ros2"], solve-group = "ros2" }
+
+# On macOS, dev is just the base dependencies. On Linux, it includes the full stack.
+dev = { features = ["linux_core"], solve-group = "linux" }
+
+# On macOS, ros2-dev is just the base dependencies. On Linux, it includes the full stack + ROS2.
+ros2-dev = { features = ["linux_core", "ros2"], solve-group = "ros2" }

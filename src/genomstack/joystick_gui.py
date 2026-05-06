@@ -96,21 +96,29 @@ class JoystickGUI:
         s.blit(hdr, (10, 10))
 
         n_ax = jy.get_numaxes()
-        l_x = jy.get_axis(0) if n_ax > 0 else 0.0
-        l_y = jy.get_axis(1) if n_ax > 1 else 0.0
-        r_x = jy.get_axis(3) if n_ax > 3 else 0.0
-        r_y = jy.get_axis(4) if n_ax > 4 else 0.0
-        lt  = (jy.get_axis(2) + 1) * 0.5 if n_ax > 2 else 0.0
-        rt  = (jy.get_axis(5) + 1) * 0.5 if n_ax > 5 else 0.0
+
+        max_vel = self._cfg.get('max_velocity', 0.5)
+        max_yaw = self._cfg.get('max_yaw_rate', 0.5)
+
+        # Use the scaled read_axis values (scale already baked in) and normalise
+        # to [-1, 1] for display.  Negate Y axes so that "up command = dot up"
+        # maps correctly onto screen coordinates (screen Y increases downward).
+        l_x = -read_axis('wz') / max_yaw if max_yaw else 0.0
+        l_y = -read_axis('vz') / max_vel if max_vel else 0.0
+        r_x = -read_axis('vy') / max_vel if max_vel else 0.0
+        r_y = -read_axis('vx') / max_vel if max_vel else 0.0
+
+        # triggers — use axes not in the config, fall back to 0
+        used_axes = {v['axis'] for v in self._cfg['axes'].values()}
+        free = [i for i in range(n_ax) if i not in used_axes]
+        lt = (jy.get_axis(free[0]) + 1) * 0.5 if len(free) > 0 else 0.0
+        rt = (jy.get_axis(free[1]) + 1) * 0.5 if len(free) > 1 else 0.0
 
         # sticks
         self._draw_stick(s,  88, 145, 52, l_x, l_y, 'LEFT')
         self._draw_stick(s, 267, 145, 52, r_x, r_y, 'RIGHT')
 
         # velocity bars (deadzone + scale applied via read_axis)
-        max_vel = self._cfg.get('max_velocity', 0.5)
-        max_yaw = self._cfg.get('max_yaw_rate', 0.5)
-
         def _n(v: float, m: float) -> float:
             return max(-1.0, min(1.0, v / m)) if m else 0.0
 
@@ -267,8 +275,14 @@ class JoystickGUI:
         pygame.draw.line(s, _C['border'], (cx - r + 6, cy), (cx + r - 6, cy), 1)
         pygame.draw.line(s, _C['border'], (cx, cy - r + 6), (cx, cy + r - 6), 1)
         dot_r = 9
-        dx = int(cx + x_val * (r - dot_r - 2))
-        dy = int(cy + y_val * (r - dot_r - 2))
+        inner = r - dot_r - 2
+        # clamp to unit circle so the dot never escapes the boundary
+        mag = (x_val**2 + y_val**2) ** 0.5
+        if mag > 1.0:
+            x_val /= mag
+            y_val /= mag
+        dx = int(cx + x_val * inner)
+        dy = int(cy + y_val * inner)
         pygame.draw.circle(s, _C['accent'], (dx, dy), dot_r)
         lbl = self._font_sm.render(label, True, _C['dim'])
         s.blit(lbl, (cx - lbl.get_width() // 2, cy + r + 5))

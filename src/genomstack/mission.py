@@ -6,8 +6,9 @@ from .robot_io import RobotIO
 from .utils import is_localhost
 
 class Mission:
-    def __init__(self, io: RobotIO):
+    def __init__(self, io: RobotIO, fetch_logs: bool = True):
         self.io = io
+        self.fetch_logs = fetch_logs
         self.bag_process = None
         self._spinning = False
 
@@ -27,7 +28,7 @@ class Mission:
                 str(self.io.cfg.config_file),
             ])
 
-    def stop_logs(self) -> None:
+    def stop_logs(self, fetch_logs: bool = True) -> None:
         print('stop log')
 
         ## stop logs
@@ -40,14 +41,20 @@ class Mission:
             self.bag_process.wait()
             self.bag_process = None
 
+        if not fetch_logs:
+            return
+
         ## fetch files
-        self.io.cfg.log_dir.mkdir(parents=True, exist_ok=True)
-        if is_localhost(self.io.cfg.host):
+        host = self.io.cfg.host
+        local_log_dir = self.io.cfg.log_dir
+        local_log_dir.mkdir(parents=True, exist_ok=True)
+        if is_localhost(host):
             for f in Path('/tmp').glob('*.log'):
-                os.rename(str(f), str(self.io.cfg.log_dir / f.name))
+                os.rename(str(f), str(local_log_dir / f.name))
         else:
             subprocess.run(['scp', f'{host}:/tmp/*.log', str(local_log_dir)], check=True)
-            subprocess.run(['scp', '-r', f'{host}:/tmp/bag', str(local_log_dir)], check=True)
+            if self.bag_process is not None:
+                subprocess.run(['scp', '-r', f'{host}:/tmp/bag', str(local_log_dir)], check=True)
             subprocess.run(['ssh', host, 'rm -f /tmp/*.log'], check=True)
 
 
@@ -89,9 +96,9 @@ class Mission:
         print(f'landing: {z:.2f} [m]')
         return self.io.components['maneuver'].call('take_off', z, duration, ack=True)
 
-    def stop(self, prompt=False) -> None:
+    def stop(self, prompt=False, fetch_logs: bool | None = None) -> None:
         if prompt:
             input('stop?')
         self.io.components['rotorcraft'].call('stop')
         self._spinning = False
-        self.stop_logs()
+        self.stop_logs(fetch_logs=self.fetch_logs if fetch_logs is None else fetch_logs)

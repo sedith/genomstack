@@ -18,7 +18,7 @@ import pygame  # noqa: E402
 from .joystick_gui import JoystickGUI
 
 
-_DEFAULT_CONFIG = Path(__file__).resolve().parent.parent.parent / 'config' / 'joystick_f710.yaml'
+_DEFAULT_CONFIG = Path(__file__).resolve().parent.parent.parent / 'config' / 'joystick.yaml'
 
 
 class JoystickController:
@@ -58,7 +58,10 @@ class JoystickController:
         if not isinstance(config, dict):
             with open(config) as f:
                 config = yaml.safe_load(f)
-        self.cfg = config
+        # If the config has a 'controllers' map, resolution is deferred until
+        # the joystick name is known (_resolve_controller is called from _init_pygame).
+        self._raw_config = config
+        self.cfg = config  # may be replaced after controller detection
 
         self._show_gui = show_gui
         self._gui: JoystickGUI | None = None
@@ -187,23 +190,80 @@ class JoystickController:
     # ------------------------------------------------------------------
 
     def _init_pygame(self) -> None:
-        if not self._show_gui:
+        import platform
+        _macos = platform.system() == 'Darwin'
+        if not _macos and not self._show_gui:
+            # dummy driver is fine on Linux/Windows without a GUI, but on macOS
+            # it prevents SDL2 from enumerating HID gamepads.
             os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
             os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
         # Deliver joystick events even when the pygame window is not focused.
         os.environ.setdefault('SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS', '1')
         pygame.init()
+        if _macos and not self._show_gui:
+            # Minimal window required on macOS for HID enumeration to work.
+            # When show_gui=True the full GUI window is created below instead.
+            pygame.display.set_mode((1, 1))
+        elif _macos and self._show_gui:
+            # GUI window must exist before joystick.init() on macOS.
+            self._gui = JoystickGUI(self.cfg)
+            self._gui.init('Initialising…')
         pygame.joystick.init()
         n = pygame.joystick.get_count()
         if n == 0:
             raise RuntimeError(
-                "No joystick detected. Please connect the Logitech F710."
+                "No joystick detected. Please connect the controller."
             )
         self._joystick = pygame.joystick.Joystick(0)
         self._joystick.init()
+        self._resolve_controller(self._joystick.get_name())
         if self._show_gui:
-            self._gui = JoystickGUI(self.cfg)
-            self._gui.init(self._joystick.get_name())
+            if self._gui is None:
+                self._gui = JoystickGUI(self.cfg)
+                self._gui.init(self._joystick.get_name())
+            else:
+                # GUI was pre-created on macOS; update cfg and title with real name.
+                self._gui._cfg = self.cfg
+                self._gui.init(self._joystick.get_name())
+
+    def _resolve_controller(self, joystick_name: str) -> None:
+        """If the config has a 'controllers' map, pick the matching entry.
+
+        Matching rules (in order):
+        1. The entry key (or its optional `match` field) must be a
+           case-insensitive substring of the pygame joystick name.
+        2. Among matching entries, if `num_axes` is specified it must equal
+           the actual axis count — used to tell D-mode from X-mode F310s.
+        """
+        controllers = self._raw_config.get('controllers')
+        if not controllers:
+            return  # flat config — nothing to resolve
+        name_lower = joystick_name.lower()
+        actual_axes = self._joystick.get_numaxes()
+
+        matched_key = None
+        for key, entry in controllers.items():
+            pattern = entry.get('match', key).lower()
+            if pattern not in name_lower:
+                continue
+            if 'num_axes' in entry and entry['num_axes'] != actual_axes:
+                continue
+            matched_key = key
+            break
+
+        if matched_key is None:
+            raise RuntimeError(
+                f"No matching controller config for '{joystick_name}' "
+                f"(axes={actual_axes}).\n"
+                f"Available entries in config: {list(controllers.keys())}\n"
+                f"Add a matching entry to config/joystick.yaml."
+            )
+        # Merge controller-specific keys over shared top-level defaults
+        merged = {k: v for k, v in self._raw_config.items() if k != 'controllers'}
+        merged.update({k: v for k, v in controllers[matched_key].items()
+                       if k not in ('match', 'num_axes')})
+        self.cfg = merged
+        print(f"[joystick] using config: '{matched_key}' (matched '{joystick_name}', axes={actual_axes})")
 
     def _deadzone(self, value: float) -> float:
         dz = self.cfg.get('deadzone', 0.1)

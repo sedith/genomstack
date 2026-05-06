@@ -1,0 +1,73 @@
+host: 131.254.161.168
+plugin_path: ""
+
+mass: 2.7
+geom:
+    rotors: 6
+    armlen: 0.39
+    cf: 9.9016e-4
+    ct: 1.9e-5
+    rx: -20
+    rz: -1
+
+components:
+    rotorcraft:
+        type: rotorcraft
+        serial: /tmp/pty-tx
+        calib: ""
+
+    mocap:
+        type: optitrack
+        host: 131.254.161.168
+        port: "1509"
+
+    pom_mocap:
+        type: pom
+        meas:
+            -
+                name: mocap
+                port: mocap/bodies/TX
+            -
+                name: imu
+                port: rotorcraft/imu
+
+    # pom_lidar:
+    #     type: pom
+    #     meas:
+    #         -
+    #             name: lidar
+    #             port: /tmp/pom_lidar
+    #         -
+    #             name: imu
+    #             port: rotorcraft/imu
+    #             offset: [0, 0, -0.109, 0, 0, 0]
+
+    uavpos:
+        type: uavpos
+        xyradius: 2
+        gain:
+            Kpxy: 10
+            Kpz: 10
+            Kvxy: 20
+            Kvz: 20
+            Kixy: 0
+            Kiz: 0
+
+    uavatt:
+        type: uavatt
+        gain:
+            Kqxy: 15
+            Kqz: 15
+            Kwxy: 3
+            Kwz: 1
+
+    maneuver:
+        type: maneuver
+        vmax: 1
+        wmax: 2
+        amax: 3
+        dwmax: 2
+
+external_publishers: {}
+
+ros2: {}

@@ -1,0 +1,34 @@
+# Logitech F310 gamepad — DirectInput ('D') mode, macOS
+#
+# Button indices (pygame, DirectInput on macOS):
+#   0 : A      1 : B      4 : X      5 : Y
+#   10: LB     13: RB
+#   3 : Back   2 : Start
+#   11: Left stick click   14: Right stick click
+
+buttons:
+  start: 2          # START  → arm & servo
+  back: 3           # BACK   → emergency stop & quit
+  takeoff: 5        # Y      → takeoff
+  land: 0           # A      → land
+  motors_off: 1     # B      → stop motors (disarm, keep session alive)
+  x: 4              # X      → free slot for custom sequences
+  enable_manual: 10 # LB     → hold to send velocity commands
+
+axes:
+  vz:              # altitude:     left  stick vertical  (stick up → climb)
+    axis: 1
+    scale: 1.0
+  wz:              # yaw rate:     left  stick horizontal (inverted: stick right → turn right)
+    axis: 0
+    scale: -1.0
+  vx:              # fwd / back:   right stick vertical  (stick up → forward)
+    axis: 3
+    scale: 1.0
+  vy:              # left / right: right stick horizontal (stick right → move right)
+    axis: 2
+    scale: -1.0
+
+max_velocity: 0.5    # m/s   — peak linear speed per axis
+max_yaw_rate: 0.5    # rad/s — peak yaw rate
+deadzone: 0.1        # normalised axis deadzone [0, 1]

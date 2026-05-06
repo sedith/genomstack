@@ -1,0 +1,99 @@
+# Unified joystick configuration.
+#
+# At runtime the controller name reported by pygame is matched against the keys
+# of the `controllers` map (case-insensitive substring match).  When multiple
+# entries match the same name, `num_axes` is used to pick the right one
+# (D/DirectInput mode has 4 axes, X/XInput mode has 6).
+#
+# To find your controller's name and axis count run:
+#   pixi run python joystick_diagnose.py
+
+controllers:
+
+  # ── Logitech F710 / F310 — XInput ('X') mode, Linux ─────────────────────
+  # pygame name: "Logitech Gamepad F710" / "Logitech Gamepad F310"
+  # num_axes: 6  (LT/RT are separate analogue axes 2 and 5)
+  F710:
+    num_axes: 6
+    buttons:
+      start: 7          # START  → arm & servo
+      back: 6           # BACK   → emergency stop & quit
+      takeoff: 3        # Y      → takeoff
+      land: 0           # A      → land
+      motors_off: 1     # B      → stop motors (disarm, keep session alive)
+      x: 2              # X      → free slot for custom sequences
+      enable_manual: 4  # LB     → hold to send velocity commands
+    axes:
+      vz:
+        axis: 1
+        scale: -1.0
+      wz:
+        axis: 0
+        scale: -1.0
+      vx:
+        axis: 4
+        scale: -1.0
+      vy:
+        axis: 3
+        scale: -1.0
+
+  # ── Logitech F310 — XInput ('X') mode ────────────────────────────────────
+  # pygame name: "Logitech Gamepad F310" or "Logitech F310 Gamepad"
+  # num_axes: 6  (LT/RT are separate analogue axes 2 and 5)
+  F310_X:
+    match: F310
+    num_axes: 6
+    buttons:
+      start: 7          # START  → arm & servo
+      back: 6           # BACK   → emergency stop & quit
+      takeoff: 3        # Y      → takeoff
+      land: 0           # A      → land
+      motors_off: 1     # B      → stop motors (disarm, keep session alive)
+      x: 2              # X      → free slot for custom sequences
+      enable_manual: 4  # LB     → hold to send velocity commands
+    axes:
+      vz:
+        axis: 1
+        scale: -1.0
+      wz:
+        axis: 0
+        scale: -1.0
+      vx:
+        axis: 4
+        scale: -1.0
+      vy:
+        axis: 3
+        scale: -1.0
+
+  # ── Logitech F310 — DirectInput ('D') mode, macOS ────────────────────────
+  # pygame name on macOS: "Logitech Dual Action"  (same physical controller)
+  # num_axes: 4  (no separate trigger axes in D mode)
+  F310_D:
+    match: dual action
+    num_axes: 4
+    buttons:
+      start: 2          # START  → arm & servo
+      back: 3           # BACK   → emergency stop & quit
+      takeoff: 5        # Y      → takeoff
+      land: 0           # A      → land
+      motors_off: 1     # B      → stop motors (disarm, keep session alive)
+      x: 4              # X      → free slot for custom sequences
+      enable_manual: 10 # LB     → hold to send velocity commands
+    axes:
+      vz:
+        axis: 1
+        scale: 1.0
+      wz:
+        axis: 0
+        scale: -1.0
+      vx:
+        axis: 3
+        scale: 1.0
+      vy:
+        axis: 2
+        scale: -1.0
+
+# Shared defaults (can be overridden per-controller above)
+max_velocity: 0.5    # m/s   — peak linear speed per axis
+max_yaw_rate: 0.5    # rad/s — peak yaw rate
+deadzone: 0.1        # normalised axis deadzone [0, 1]
