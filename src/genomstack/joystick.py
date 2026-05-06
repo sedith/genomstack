@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import math
 import time
 import threading
 import yaml
@@ -40,7 +41,9 @@ class JoystickController:
         Right stick X : vy   (left / right)
     """
 
-    CONTROL_RATE: int = 50  # Hz
+    CONTROL_RATE: int = 50   # Hz — joystick / velocity control loop
+    GUI_RATE:     int = 10   # Hz — pygame window refresh
+    BATTERY_INTERVAL: float = 5.0  # seconds between battery reads
 
     def __init__(
         self,
@@ -65,6 +68,9 @@ class JoystickController:
         self._custom_buttons: dict[int, tuple[str, Callable]] = {}
         self._cycle_buttons: dict[int, dict] = {}
         self._active_button: int | None = None
+        self._last_gui_draw:   float = 0.0
+        self._last_battery_read: float = 0.0
+        self._cached_battery_v: float | None = None
         self._sequence_thread: threading.Thread | None = None
         self._manual_thread: threading.Thread | None = None
         self._manual_stop = threading.Event()
@@ -72,6 +78,7 @@ class JoystickController:
         # (event.mux.wait) is not thread-safe and a concurrent call can
         # silently consume a done-event meant for another thread's .wait().
         self._genomix_lock = threading.Lock()
+        self._cached_state: dict | None = None
 
     # ------------------------------------------------------------------
     # Public interface
@@ -225,6 +232,51 @@ class JoystickController:
         finally:
             self._active_button = None
 
+    def _collect_diagnostics(self) -> dict:
+        """Non-blocking read of robot telemetry for the GUI diagnostics panel.
+
+        All genomix calls are guarded with a non-blocking lock acquisition so
+        that this method never races with the manual-control or sequence threads.
+        If the lock is busy the cached value is returned as-is.
+        """
+        diag: dict = {'spinning': self.mission._spinning}
+        now = time.monotonic()
+
+        # battery: try to refresh at most once every BATTERY_INTERVAL seconds
+        if now - self._last_battery_read >= self.BATTERY_INTERVAL:
+            if self._genomix_lock.acquire(blocking=False):
+                try:
+                    self._last_battery_read = now
+                    self._cached_battery_v = self.mission.io.get_battery()
+                except Exception as e:
+                    print(f'[joystick] battery read failed: {e}')
+                finally:
+                    self._genomix_lock.release()
+        diag['battery_v'] = self._cached_battery_v
+
+        # position / attitude: attempt each GUI cycle, skip if lock is busy
+        if self._genomix_lock.acquire(blocking=False):
+            try:
+                self._cached_state = self.mission.io.get_state()
+            except Exception as e:
+                print(f'[joystick] pom read failed: {e}')
+                self._cached_state = None
+            finally:
+                self._genomix_lock.release()
+
+        state = self._cached_state
+        if state is not None:
+            diag['pos'] = state['pos']
+            qw, qx, qy, qz = state['att']
+            roll  = math.atan2(2*(qw*qx + qy*qz), 1 - 2*(qx*qx + qy*qy))
+            pitch = math.asin( max(-1.0, min(1.0, 2*(qw*qy - qz*qx))))
+            yaw   = math.atan2(2*(qw*qz + qx*qy), 1 - 2*(qy*qy + qz*qz))
+            diag['rpy'] = (roll, pitch, yaw)
+        else:
+            diag['pos'] = None
+            diag['rpy'] = None
+        return diag
+
     def _manual_loop(self) -> None:
         """50 Hz background thread: send velocity commands while LB is held.
 
@@ -336,10 +388,14 @@ class JoystickController:
             if remaining > 0:
                 time.sleep(remaining)
             if self._gui is not None:
-                self._gui.draw(
-                    self._joystick,
-                    self._read_axis,
-                    self._custom_buttons,
-                    self._cycle_buttons,
-                    self._active_button,
-                )
+                now = time.monotonic()
+                if now - self._last_gui_draw >= 1.0 / self.GUI_RATE:
+                    self._last_gui_draw = now
+                    self._gui.draw(
+                        self._joystick,
+                        self._read_axis,
+                        self._custom_buttons,
+                        self._cycle_buttons,
+                        self._active_button,
+                        self._collect_diagnostics(),
+                    )

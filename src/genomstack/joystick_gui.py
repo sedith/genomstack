@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from typing import Callable
 
 import pygame
 
 
 # ── layout ───────────────────────────────────────────────────────────────────
-_GUI_W, _GUI_H = 720, 420
+_GUI_W, _GUI_H = 720, 490
 _SPLIT = 355  # x boundary: controller panel | actions panel
 
 # ── colour palette ───────────────────────────────────────────────────────────
@@ -22,6 +23,9 @@ _C: dict[str, tuple[int, int, int]] = {
     'pressed': (255, 195,  45),
     'bar_bg':  (55,  55,  55),
     'sep':     (75,  75,  75),
+    'green':   (60,  200,  80),
+    'yellow':  (240, 190,  30),
+    'red':     (220,  55,  55),
 }
 
 
@@ -33,7 +37,7 @@ class JoystickGUI:
         gui = JoystickGUI(cfg)
         gui.init(joystick_name)   # after pygame.init()
         # inside the main loop:
-        gui.draw(joystick, read_axis, custom_buttons, cycle_buttons, active_button)
+        gui.draw(joystick, read_axis, custom_buttons, cycle_buttons, active_button, diagnostics)
     """
 
     def __init__(self, cfg: dict) -> None:
@@ -62,6 +66,7 @@ class JoystickGUI:
         custom_buttons: dict[int, tuple[str, object]],
         cycle_buttons: dict[int, dict],
         active_button: int | None,
+        diagnostics: dict | None = None,
     ) -> None:
         """Render one frame. Call at the end of each control-loop iteration."""
         if self._screen is None:
@@ -70,6 +75,7 @@ class JoystickGUI:
         s.fill(_C['bg'])
 
         self._draw_controller_panel(s, joystick, read_axis)
+        self._draw_diagnostics(s, diagnostics or {})
         self._draw_actions_panel(s, joystick, custom_buttons, cycle_buttons, active_button)
 
         pygame.display.flip()
@@ -136,6 +142,56 @@ class JoystickGUI:
             pressed = bool(jy.get_button(idx)) if 0 <= idx < n_btn else False
             self._draw_chip(s, cx, 300, w, 24, lbl, pressed)
             cx += w + 5
+
+    def _draw_diagnostics(self, s: pygame.Surface, diag: dict) -> None:
+        y0 = 335
+        pygame.draw.line(s, _C['sep'], (10, y0), (_SPLIT - 10, y0), 1)
+        y0 += 8
+        hdr = self._font_hd.render('DIAGNOSTICS', True, _C['text'])
+        s.blit(hdr, (10, y0))
+        y0 += 22
+
+        # ── state ────────────────────────────────────────────────────
+        spinning = diag.get('spinning', False)
+        state_lbl = 'SPINNING' if spinning else 'STOPPED'
+        state_col = _C['green'] if spinning else _C['red']
+        st = self._font.render(f'state  {state_lbl}', True, state_col)
+        s.blit(st, (10, y0))
+        y0 += 20
+
+        # ── battery ──────────────────────────────────────────────────
+        batt = diag.get('battery_v')
+        if batt is not None:
+            if batt <= 14.8:
+                bc = _C['red']
+            elif batt <= 15.3:
+                bc = _C['yellow']
+            else:
+                bc = _C['green']
+            bt = self._font.render(f'battery  {batt:.2f} V', True, bc)
+        else:
+            bt = self._font.render('battery  --', True, _C['dim'])
+        s.blit(bt, (10, y0))
+        y0 += 20
+
+        # ── position ─────────────────────────────────────────────────
+        pos = diag.get('pos')
+        rpy = diag.get('rpy')
+        if pos is not None:
+            pt = self._font_sm.render(
+                f'pos     x={pos[0]:6.2f}  y={pos[1]:6.2f}  z={pos[2]:6.2f} m', True, _C['text'])
+        else:
+            pt = self._font_sm.render('pos     --', True, _C['dim'])
+        s.blit(pt, (10, y0))
+        y0 += 18
+
+        if rpy is not None:
+            r, p, y = (math.degrees(v) for v in rpy)
+            at = self._font_sm.render(
+                f'att     r={r:6.1f}  p={p:6.1f}  y={y:6.1f} °', True, _C['text'])
+        else:
+            at = self._font_sm.render('att     --', True, _C['dim'])
+        s.blit(at, (10, y0))
 
     def _draw_actions_panel(
         self,

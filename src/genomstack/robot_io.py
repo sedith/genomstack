@@ -50,5 +50,26 @@ class RobotIO:
         port, *subport = port.split('/')
         return self.components[component_name].call(port, *subport)
 
+    def _component_by_type(self, gtype: str):
+        """Return the first loaded component whose genomix type matches gtype."""
+        for c in self.components.values():
+            if c.gtype == gtype:
+                return c
+        raise KeyError(f'No component of type {gtype!r} found')
+
+    def get_battery(self) -> float | None:
+        """Return battery voltage in V, or None on failure."""
+        raw = self._component_by_type('rotorcraft').call('get_battery')
+        return raw['battery']['level']
+
+    def get_state(self) -> dict | None:
+        """Return a dict with 'pos' (x,y,z) and 'att' (qw,qx,qy,qz), or None on failure."""
+        body = self._component_by_type('pom').call('frame', 'robot')['frame']
+        return {
+            'pos': (body['pos']['x'], body['pos']['y'], body['pos']['z']),
+            'att': (body['att']['qw'], body['att']['qx'],
+                    body['att']['qy'], body['att']['qz']),
+        }
+
     def publish(self, publisher_name: str, msg: dict) -> None:
         self.publishers[publisher_name].publish(msg)
