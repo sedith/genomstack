@@ -158,6 +158,72 @@ m.stop(prompt=True)
 
 > Note: Individual components can still be accessed easily to do custom mission launch
 
+## Joystick teleoperation
+
+`JoystickController` wraps a Logitech F710 (XInput mode) and provides a blocking control loop with an optional pygame GUI showing live joystick state, button actions, and robot diagnostics.
+
+### Basic usage
+
+```python
+from genomstack import RobotIO, Mission
+from genomstack.joystick import JoystickController
+
+io = RobotIO('tilthex.yaml')
+io.setup()
+
+mission = Mission(io)
+mission.spin()
+
+ctrl = JoystickController(mission, show_gui=True)
+ctrl.run()   # blocks until BACK is pressed or the window is closed
+```
+
+Pass `show_gui=False` (the default) to run without a window — useful over SSH or in headless setups. Joystick events are delivered in the background regardless of window focus.
+
+### Custom button sequences
+
+Any button not claimed by a built-in action can be bound to an arbitrary callable.  The callback runs in a background thread, so blocking `ack=True` genomix calls are safe and will not stall the control loop.
+
+```python
+def go_home():
+    mission.goto(0, 0, 1.5, 0, duration=0).wait()
+
+ctrl.register_button('x', go_home, label='Go home')
+```
+
+### Cycling through a sequence of steps
+
+`register_button_cycle` binds a list of callbacks to one button.  Each press executes the next step in order (wrapping back to the first after the last).  The GUI shows which step is active and which comes next.
+
+```python
+def survey_north():
+    mission.goto(0, 3, 2, 0, duration=0).wait()
+
+def survey_south():
+    mission.goto(0, -3, 2, 0, duration=0).wait()
+
+ctrl.register_button_cycle(
+    'x',
+    [survey_north, survey_south],
+    labels=['Survey north', 'Survey south'],
+)
+```
+
+While a step is running, pressing the button again is ignored. The button chip in the GUI is highlighted in orange for the duration of the step.
+
+### GUI diagnostics panel
+
+When `show_gui=True` the right-hand panel displays:
+
+| Field | Source |
+|---|---|
+| **state** | `rotorcraft` — SPINNING / STOPPED |
+| **battery** | `rotorcraft.get_battery()` — voltage in V, colour-coded |
+| **pos** | `pom` — x / y / z in metres |
+| **att** | `pom` — roll / pitch / yaw in degrees |
+
+Battery is polled at most once every 5 seconds. Position and attitude are polled at the GUI refresh rate (10 Hz) without blocking the control loop.
+
 ## `genomstack` Python package
 
 The `genomstack` package is the Python API used to interact with the GenoM stack.
