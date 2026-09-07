@@ -82,7 +82,7 @@
                 <cylinder><radius>0.1</radius><length>0.08</length></cylinder>
             </geometry>
             <material>
-                <diffuse>1.0 0.5 0.1 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_1">
@@ -91,7 +91,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_2">
@@ -100,7 +100,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_3">
@@ -109,7 +109,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_4">
@@ -118,7 +118,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_5">
@@ -127,7 +127,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
         <visual name="arm_6">
@@ -136,7 +136,7 @@
                 <cylinder><radius>0.01</radius><length>0.42</length></cylinder>
             </geometry>
             <material>
-                <diffuse>0.6 0.6 0.6 1</diffuse>
+                <diffuse>0.2 0.2 0.2 1</diffuse>
             </material>
         </visual>
     </link>
