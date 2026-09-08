@@ -152,7 +152,7 @@ class OdomPath(Node):
         tf.transform.translation.x = 0.0
         tf.transform.translation.y = 0.0
         tf.transform.translation.z = -0.#15
-        tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z = euler2quat([0,0,-0.3])
+        tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y, tf.transform.rotation.z = euler2quat([0,0,-0.1])
         self.static_tf_broadcaster.sendTransform(tf)
 
         ## animate propellers

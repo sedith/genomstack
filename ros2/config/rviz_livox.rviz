@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /lidar pc1
+        - /odom pom1/Shape1
         - /odom pom_mocap1/Shape1
       Splitter Ratio: 0.5
     Tree Height: 1118
@@ -20,14 +20,13 @@ Panels:
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
-      - /Current View1/Focal Point1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz_common/Time
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: lidar pc
 Visualization Manager:
   Class: ""
   Displays:
@@ -50,12 +49,12 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz_default_plugins/Axes
-      Enabled: false
+      Enabled: true
       Length: 1
       Name: world axes
       Radius: 0.05000000074505806
       Reference Frame: <Fixed Frame>
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -127,8 +126,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 5.975980758666992
-        Min Value: -1.365616798400879
+        Max Value: 2.6751580238342285
+        Min Value: -1.4068796634674072
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -162,8 +161,7 @@ Visualization Manager:
       Enabled: true
       Name: body_mesh
       Namespaces:
-        robot_model: true
-        rotor_blade: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -234,14 +232,14 @@ Visualization Manager:
       Position Tolerance: 0
       Shape:
         Alpha: 1
-        Axes Length: 1
+        Axes Length: 0.30000001192092896
         Axes Radius: 0.10000000149011612
         Color: 255; 25; 0
         Head Length: 0.30000001192092896
         Head Radius: 0.10000000149011612
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
-        Value: Arrow
+        Value: Axes
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -376,7 +374,7 @@ Visualization Manager:
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
       Line Style: Billboards
-      Line Width: 0.029999999329447746
+      Line Width: 0.10000000149011612
       Name: Path
       Offset:
         X: 0
@@ -440,26 +438,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz_default_plugins/ThirdPersonFollower
-      Distance: 8.425289154052734
+      Angle: -5.079996585845947
+      Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 0
-        Y: 0
-        Z: -2
-      Focal Shape Fixed Size: false
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.35539835691452026
-      Target Frame: body
-      Value: ThirdPersonFollower (rviz_default_plugins)
-      Yaw: 1.740397572517395
+      Scale: 80.05474090576172
+      Target Frame: <Fixed Frame>
+      Value: TopDownOrtho (rviz_default_plugins)
+      X: 2.4616518020629883
+      Y: 5.256276607513428
     Saved: ~
 Window Geometry:
   Displays:

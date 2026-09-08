@@ -18,8 +18,8 @@
     </joint>
 
     <link name="rod">
-        <!-- <pose>0.65 -0.38 -0.05 0 1.5708 -0.5236</pose> -->
-        <pose>0.75 0 -0.05 0 1.5708 0</pose>
+        <pose>0.65 -0.38 -0.05 0 1.5708 -0.5236</pose>
+        <!-- <pose>0.75 0 -0.05 0 1.5708 0</pose> -->
 
         <visual name="rod_visual">
             <geometry>
