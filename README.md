@@ -150,7 +150,7 @@ workspace/
 └── main.py             # interactive mission script
 ```
 
-An example workspace repository will be linked here [TODO put repo link].
+An example workspace repository can be found [here](https://github.com/sedith/genomstack_workspace).
 The `qrsim` and `txsim` configurations enable basic quadrotor and hexarotor simulations.
 
 The workspace root is derived from the selected config file, which must be located directly inside the workspace's `config/` directory.
