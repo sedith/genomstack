@@ -28,9 +28,7 @@ class Component:
     def call(self, method: str, *args, **kwargs) -> Any:
         """Call a service/method on the underlying GenoM handle."""
         if not hasattr(self.handle, method):
-            raise AttributeError(
-                f'Component {self.name} has no method {method}'
-            )
+            raise AttributeError(f'Component {self.name} has no method {method}')
 
         fn = getattr(self.handle, method)
         return fn(*args, **kwargs)

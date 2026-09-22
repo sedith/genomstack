@@ -1,4 +1,3 @@
-import socket
 import numpy as np
 
 
@@ -42,9 +41,9 @@ def quat2euler(q):
     """Compute the euler angles associated to a quaternion.
     q       -- quaternion with scalar as first element [qw qx qy qz]
     """
-    roll = np.arctan2(2 * (q[0]*q[1] + q[2]*q[3]), 1 - 2 * (q[1]*q[1] + q[2]*q[2]))
-    pitch = np.arcsin(2 * (q[0]*q[2] - q[3]*q[1]))
-    yaw = np.arctan2(2 * (q[0]*q[3] + q[1]*q[2]), 1 - 2 * (q[2]*q[2] + q[3]*q[3]))
+    roll = np.arctan2(2 * (q[0] * q[1] + q[2] * q[3]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]))
+    pitch = np.arcsin(2 * (q[0] * q[2] - q[3] * q[1]))
+    yaw = np.arctan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]))
     return np.array([roll, pitch, yaw])
 
 
@@ -52,22 +51,22 @@ def quat2yaw(q):
     """Compute the yaw angle associated to a quaternion.
     q       -- quaternion with scalar as first element [qw qx qy qz]
     """
-    return np.arctan2(2 * (q[0]*q[3] + q[1]*q[2]), 1 - 2 * (q[2]*q[2] + q[3]*q[3]))
+    return np.arctan2(2 * (q[0] * q[3] + q[1] * q[2]), 1 - 2 * (q[2] * q[2] + q[3] * q[3]))
 
 
 def rot2euler(R):
     """Compute the euler angles associated to a rotation matrix.
     R       -- rotation matrix
     """
-    roll = np.arctan2(R[2,1], R[2,2])
-    pitch = np.arcsin(-R[2,0])
-    yaw = np.arctan2(R[1,0], R[0,0])
+    roll = np.arctan2(R[2, 1], R[2, 2])
+    pitch = np.arcsin(-R[2, 0])
+    yaw = np.arctan2(R[1, 0], R[0, 0])
     return np.array([roll, pitch, yaw])
 
 
 def rot2quat(R):
     """Compute the euler angles associated to a rotation matrix.
-    This is disgusting, clean implementation TODO using https://math.stackexchange.com/questions/893984/conversion-of-rotation-matrix-to-quaternion
+    This is ulgy, clean implementation TODO using https://math.stackexchange.com/questions/893984/conversion-of-rotation-matrix-to-quaternion
     see https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf for reference
     R       -- rotation matrix
     """
@@ -84,12 +83,7 @@ def euler2quat(euler):
     sp = np.sin(euler[1] * 0.5)
     cy = np.cos(euler[2] * 0.5)
     sy = np.sin(euler[2] * 0.5)
-    return np.array([
-        cr * cp * cy + sr * sp * sy,
-        sr * cp * cy - cr * sp * sy,
-        cr * sp * cy + sr * cp * sy,
-        cr * cp * sy - sr * sp * cy
-    ])
+    return np.array([cr * cp * cy + sr * sp * sy, sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy])
 
 
 def yaw2quat(yaw):
@@ -101,12 +95,7 @@ def yaw2quat(yaw):
     hyaw = yaw * 0.5
     cy = np.cos(hyaw)
     sy = np.sin(hyaw)
-    return np.array([
-        cr * cp * cy + sr * sp * sy,
-        sr * cp * cy - cr * sp * sy,
-        cr * sp * cy + sr * cp * sy,
-        cr * cp * sy - sr * sp * cy
-    ])
+    return np.array([cr * cp * cy + sr * sp * sy, sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy])
 
 
 def invert(q):
@@ -116,30 +105,36 @@ def invert(q):
 
 def hamilton_prod(q1, q2):
     """Return the Hamilton product of 2 quaternions q1*q2."""
-    return np.array([
-        q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2] - q1[3]*q2[3],
-        q1[0]*q2[1] + q1[1]*q2[0] + q1[2]*q2[3] - q1[3]*q2[2],
-        q1[0]*q2[2] - q1[1]*q2[3] + q1[2]*q2[0] + q1[3]*q2[1],
-        q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1] + q1[3]*q2[0]
-    ])
+    return np.array(
+        [
+            q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3],
+            q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2],
+            q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1],
+            q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0],
+        ]
+    )
 
 
 def skew(v):
     """Return the skew symmetric matrix of a vector v."""
-    return np.array([
-        [0.0, -v[2], v[1]],
-        [v[2], 0.0, -v[0]],
-        [-v[1], v[0], 0.0],
-    ])
+    return np.array(
+        [
+            [0.0, -v[2], v[1]],
+            [v[2], 0.0, -v[0]],
+            [-v[1], v[0], 0.0],
+        ]
+    )
 
 
 def vee(mat):
     """Return the vee map of a 3x3 skew-symmetric matrix."""
-    return np.array([
-        mat[2, 1] - mat[1, 2],
-        mat[0, 2] - mat[2, 0],
-        mat[1, 0] - mat[0, 1],
-    ])
+    return np.array(
+        [
+            mat[2, 1] - mat[1, 2],
+            mat[0, 2] - mat[2, 0],
+            mat[1, 0] - mat[0, 1],
+        ]
+    )
 
 
 ## allocation matrix
@@ -183,11 +178,7 @@ def gtmrp_matrix(rotations, positions, signs, cf, ct):
 
     thrust_axes = [np.asarray(r, dtype=float) @ np.array([0.0, 0.0, 1.0]) for r in rotations]
     gf = np.column_stack(thrust_axes)
-    gt = np.column_stack([
-        np.cross(np.asarray(positions[i], dtype=float), thrust_axes[i])
-        + ct[i] / cf[i] * signs[i] * thrust_axes[i]
-        for i in range(n)
-    ])
+    gt = np.column_stack([np.cross(np.asarray(positions[i], dtype=float), thrust_axes[i]) + ct[i] / cf[i] * signs[i] * thrust_axes[i] for i in range(n)])
     return gf, gt
 
 
@@ -211,7 +202,3 @@ def allocation_from_config(geom):
         alpha0=int(getattr(geom, 'alpha0', -1)),
         s0=int(getattr(geom, 's0', 1)),
     )
-
-## host helper
-def is_localhost(host: str) -> bool:
-    return host in ('localhost', '127.0.0.1', '::1', socket.gethostname())

@@ -1,27 +1,25 @@
-# src/genomstack/rosutils/convert.py
-
-import time
 import numpy as np
+import time
 from genomstack.utils import quat2euler, quat2rot
 
 
 def lower_tri(mat):
+    """Return the lower triangle of a square matrix as a flat list."""
     return list(np.asarray(mat)[np.tril_indices(mat.shape[0])])
 
 
 def ros_cov3_to_lower(cov9):
+    """Convert a flattened ROS 3x3 covariance to lower-triangle form."""
     return lower_tri(np.asarray(cov9).reshape(3, 3))
 
 
 def lower_cov3_to_ros(cov6):
-    return [
-        cov6[0], cov6[1], cov6[3],
-        cov6[1], cov6[2], cov6[4],
-        cov6[3], cov6[4], cov6[5],
-    ]
+    """Expand a lower-triangle covariance into a flattened ROS 3x3 matrix."""
+    return [cov6[0], cov6[1], cov6[3], cov6[1], cov6[2], cov6[4], cov6[3], cov6[4], cov6[5]]
 
 
 def jacobian_euler2quat(roll, pitch, yaw):
+    """Return the Jacobian mapping Euler perturbations to a quaternion."""
     cr, sr = np.cos(roll * 0.5), np.sin(roll * 0.5)
     cp, sp = np.cos(pitch * 0.5), np.sin(pitch * 0.5)
     cy, sy = np.cos(yaw * 0.5), np.sin(yaw * 0.5)
@@ -29,36 +27,40 @@ def jacobian_euler2quat(roll, pitch, yaw):
     J = np.zeros((4, 3))
 
     J[0, 0] = 0.5 * (-sr * cp * cy + cr * sp * sy)
-    J[1, 0] = 0.5 * ( cr * cp * cy + sr * sp * sy)
+    J[1, 0] = 0.5 * (cr * cp * cy + sr * sp * sy)
     J[2, 0] = 0.5 * (-sr * sp * cy + cr * cp * sy)
     J[3, 0] = 0.5 * (-sr * cp * sy - cr * sp * cy)
 
     J[0, 1] = 0.5 * (-cr * sp * cy + sr * cp * sy)
     J[1, 1] = 0.5 * (-sr * sp * cy - cr * cp * sy)
-    J[2, 1] = 0.5 * ( cr * cp * cy - sr * sp * sy)
+    J[2, 1] = 0.5 * (cr * cp * cy - sr * sp * sy)
     J[3, 1] = 0.5 * (-cr * sp * sy - sr * cp * cy)
 
     J[0, 2] = 0.5 * (-cr * cp * sy + sr * sp * cy)
     J[1, 2] = 0.5 * (-sr * cp * sy - cr * sp * cy)
     J[2, 2] = 0.5 * (-cr * sp * sy + sr * cp * cy)
-    J[3, 2] = 0.5 * ( cr * cp * cy + sr * sp * sy)
+    J[3, 2] = 0.5 * (cr * cp * cy + sr * sp * sy)
 
     return J
 
 
 class Cov:
+    """Store covariance blocks in the compact representation used by genom."""
+
     def __init__(self):
         self.pq = [0] * 12
 
     def from_stds(self, std_p, std_eul, std_v, std_w):
-        self.p =  lower_tri(np.eye(3) * std_p ** 2)
-        self.eul = np.eye(3) * std_eul ** 2
-        self.v = lower_tri(np.eye(3) * std_v ** 2)
-        self.w = lower_tri(np.eye(3) * std_w ** 2)
+        """Build diagonal covariance matrices from standard deviations."""
+        self.p = lower_tri(np.eye(3) * std_p**2)
+        self.eul = np.eye(3) * std_eul**2
+        self.v = lower_tri(np.eye(3) * std_v**2)
+        self.w = lower_tri(np.eye(3) * std_w**2)
 
         return self
 
     def from_ros(self, data):
+        """Split ROS pose and twist covariance matrices by state group."""
         pose_cov = np.asarray(data.pose.covariance).reshape(6, 6)
         twist_cov = np.asarray(data.twist.covariance).reshape(6, 6)
 
@@ -70,25 +72,29 @@ class Cov:
         return self
 
     def get_cov_q(self, q):
+        """Project Euler covariance into quaternion coordinates."""
         J = jacobian_euler2quat(*quat2euler(q))
         self.q = lower_tri(J @ self.eul @ J.T)
 
+
 def odom_to_pose_estimator(data, ts=None, cov=None, repub_vel=False):
-    cov = cov or Cov().from_ros(data) 
+    """Convert ROS odometry into a genom pose-estimator measurement."""
+    cov = cov or Cov().from_ros(data)
 
     p = [data.pose.pose.position.x, data.pose.pose.position.y, data.pose.pose.position.z]
     q = [data.pose.pose.orientation.w, data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z]
     v_b = [data.twist.twist.linear.x, data.twist.twist.linear.y, data.twist.twist.linear.z]
     w_b = [data.twist.twist.angular.x, data.twist.twist.angular.y, data.twist.twist.angular.z]
 
-    ## twist in world frame
+    ## rotate body-frame twist into the world frame
     r_wb = quat2rot(q)
     v_w = list(r_wb @ v_b)
     w_w = list(r_wb @ w_b)
 
-    ## covariance
+    ## propagate attitude covariance
     cov.get_cov_q(q)
 
+    ## preserve the message timestamp unless the caller supplies one
     if ts is None:
         sec = data.header.stamp.sec
         nsec = data.header.stamp.nanosec
@@ -99,20 +105,15 @@ def odom_to_pose_estimator(data, ts=None, cov=None, repub_vel=False):
         'measure': {
             'ts': {'sec': sec, 'nsec': nsec},
             'intrinsic': 0,
-
             'pos': {'x': p[0], 'y': p[1], 'z': p[2]},
             'att': {'qw': q[0], 'qx': q[1], 'qy': q[2], 'qz': q[3]},
-
             'vel': {'vx': v_w[0], 'vy': v_w[1], 'vz': v_w[2]} if repub_vel else None,
             'avel': {'wx': w_w[0], 'wy': w_w[1], 'wz': w_w[2]} if repub_vel else None,
-
             'acc': None,
             'aacc': None,
-
             'pos_cov': {'cov': cov.p},
             'att_cov': {'cov': cov.q},
             'att_pos_cov': {'cov': cov.pq},
-
             'vel_cov': {'cov': cov.v} if repub_vel else None,
             'avel_cov': {'cov': cov.w} if repub_vel else None,
             'acc_cov': None,
@@ -122,9 +123,12 @@ def odom_to_pose_estimator(data, ts=None, cov=None, repub_vel=False):
 
 
 def pose_estimator_to_odometry(data, ts=None, frame_id='map', child_frame_id='body'):
+    """Convert a genom pose-estimator measurement into ROS odometry."""
     from nav_msgs.msg import Odometry
+
     msg = Odometry()
 
+    ## populate message metadata
     if ts is None:
         msg.header.stamp.sec = data['ts']['sec']
         msg.header.stamp.nanosec = data['ts']['nsec']
@@ -135,6 +139,7 @@ def pose_estimator_to_odometry(data, ts=None, frame_id='map', child_frame_id='bo
     msg.header.frame_id = frame_id
     msg.child_frame_id = child_frame_id
 
+    ## populate pose and optional twist values
     msg.pose.pose.position.x = float(data['pos']['x'])
     msg.pose.pose.position.y = float(data['pos']['y'])
     msg.pose.pose.position.z = float(data['pos']['z'])
@@ -154,6 +159,7 @@ def pose_estimator_to_odometry(data, ts=None, frame_id='map', child_frame_id='bo
         msg.twist.twist.angular.y = float(data['avel']['wy'])
         msg.twist.twist.angular.z = float(data['avel']['wz'])
 
+    ## expand compact covariance blocks into ROS 6x6 matrices
     if data['pos_cov'] is not None:
         pos_cov = lower_cov3_to_ros(data['pos_cov']['cov'])
         for r in range(3):
@@ -182,9 +188,12 @@ def pose_estimator_to_odometry(data, ts=None, frame_id='map', child_frame_id='bo
 
 
 def pose_estimator_to_pose_stamped(data, ts=None, frame_id='map'):
+    """Convert a genom pose-estimator measurement into a ROS stamped pose."""
     from geometry_msgs.msg import PoseStamped
+
     msg = PoseStamped()
 
+    ## populate timestamp and reference frame
     if ts is None:
         msg.header.stamp.sec = data['ts']['sec']
         msg.header.stamp.nanosec = data['ts']['nsec']
@@ -194,6 +203,7 @@ def pose_estimator_to_pose_stamped(data, ts=None, frame_id='map'):
 
     msg.header.frame_id = frame_id
 
+    ## populate the required position and attitude fields
     msg.pose.position.x = float(data['pos']['x'])
     msg.pose.position.y = float(data['pos']['y'])
     msg.pose.position.z = float(data['pos']['z'])
@@ -207,9 +217,12 @@ def pose_estimator_to_pose_stamped(data, ts=None, frame_id='map'):
 
 
 def rigid_body_to_pose_stamped(data, ts=None, frame_id='map'):
+    """Convert a genom rigid-body measurement into a ROS stamped pose."""
     from geometry_msgs.msg import PoseStamped
+
     msg = PoseStamped()
 
+    ## populate timestamp and reference frame
     if ts is None:
         msg.header.stamp.sec = data['ts']['sec']
         msg.header.stamp.nanosec = data['ts']['nsec']
@@ -218,6 +231,8 @@ def rigid_body_to_pose_stamped(data, ts=None, frame_id='map'):
         msg.header.stamp.nanosec = ts[1]
 
     msg.header.frame_id = frame_id
+
+    ## populate whichever optional rigid-body fields are available
     if data['pos'] is not None:
         msg.pose.position.x = float(data['pos']['x'])
         msg.pose.position.y = float(data['pos']['y'])

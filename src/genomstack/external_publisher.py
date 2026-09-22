@@ -1,15 +1,18 @@
 from __future__ import annotations
+from .config import Config
 
 
 class ExternalPublisher:
     def __init__(self, cfg: Config, name: str, io: RobotIO):
+        ## retain enough context to resolve the configured target component
         self.cfg = cfg
         self.name = name
         self.io = io
 
+        ## bind the configured genom publisher factory and port
         make_publisher = getattr(self.target.handle, self.publisher_cfg.publisher)
         self.publisher = make_publisher(self.publisher_cfg.port)
-        
+
     @property
     def publisher_cfg(self) -> Config:
         return self.cfg.external_publishers[self.name]

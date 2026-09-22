@@ -15,12 +15,15 @@ class Phynt(Component):
         self.call('set_wo_bias', self.component_cfg.wo.bias)
 
         af = self.critical_damping()
-        self.call('set_af_parameters', {
-            'mass': self.cfg.inertial.mass,
-            'B': self.critical_damping(),
-            'K': self.component_cfg.af.K,
-            'J': self.cfg.inertial.J,
-         })
+        self.call(
+            'set_af_parameters',
+            {
+                'mass': self.cfg.inertial.mass,
+                'B': self.critical_damping(),
+                'K': self.component_cfg.af.K,
+                'J': self.cfg.inertial.J,
+            },
+        )
 
         self.call('enable', {'enable': {'wo': True, 'af': True}})
 

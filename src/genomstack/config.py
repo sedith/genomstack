@@ -1,21 +1,59 @@
 from __future__ import annotations
-from pathlib import Path
+
+import shlex
 import time
 import yaml
+from importlib.resources import files
+from pathlib import Path
 
 
-def find_workspace_root(start: Path | None = None) -> Path:
-    start = (start or Path(__file__)).resolve()  # works since genomstack is installed in editable mode
-    for p in [start, *start.parents]:
-        if (p / 'pyproject.toml').exists():
-            return p
-    raise RuntimeError('Could not determine workspace root.')
+def resolve_config_file(config_file: str | Path) -> Path:
+    """Resolve a config name from config/, or an explicit relative/absolute path."""
+    path = Path(config_file).expanduser()
+
+    ## allow short names such as "qr" instead of "qr.yaml"
+    if not path.suffix:
+        path = path.with_suffix('.yaml')
+
+    if path.is_absolute():
+        return path.resolve()
+
+    ## bare names are looked up in the current workspace's config directory
+    if path.parent == Path('.'):
+        return (Path.cwd() / 'config' / path).resolve()
+    return (Path.cwd() / path).resolve()
+
+
+def resolve_sidecar_command(command: str, workspace_root: Path) -> str:
+    """Resolve the first token when it names a sidecar path or Python script."""
+
+    ## keep sidecar arguments untouched while resolving only the executable
+    executable, space, arguments = command.partition(' ')
+    script = Path(executable).expanduser()
+
+    ## use absolute paths directly, local paths from the workspace, and bare Python filenames from genomstack's common sidecars
+    if script.is_absolute():
+        resolved = script
+    elif script.parent != Path('.'):
+        resolved = (workspace_root / script).resolve()
+    elif script.suffix == '.py':
+        resolved = Path(str(files('sidecars') / script.name))
+    else:
+        return command
+
+    ## Python files are scripts rather than executable commands themselves
+    executable = shlex.quote(str(resolved))
+    if resolved.suffix == '.py':
+        executable = f'python3 {executable}'
+
+    return executable + (space + arguments if space else '')
 
 
 class AttrDict(dict):
     """Makes dict accessible by attributes.
     Made partly after https://stackoverflow.com/a/1639632/6494418
     """
+
     def __init__(self, dictionary):
         for key in dictionary:
             self.__setitem__(key, dictionary[key])
@@ -35,47 +73,38 @@ class AttrDict(dict):
 
 class Config(AttrDict):
     def __init__(self, config_file: str | Path):
-        self.root = find_workspace_root()
+        ## establish the workspace from the resolved configuration path
+        self.config_file = resolve_config_file(config_file)
+        if self.config_file.parent.name != 'config':
+            raise ValueError(f'Configuration must live in a workspace config/ directory: {self.config_file}')
+        self.root = self.config_file.parent.parent
 
-        self.config_file = Path(config_file)
-        if self.config_file.is_absolute():
-            pass
-        elif self.config_file.parent == Path('.'):
-            self.config_file = self.root / 'config' / self.config_file
-        else:
-            self.config_file = self.root / self.config_file
-        if not self.config_file.suffix:
-            self.config_file = self.config_file.with_suffix(".yaml")
-
+        ## load the YAML tree and expose it through attributes
         with open(self.config_file, 'r') as f:
             yaml_dict = yaml.safe_load(f)
-
         super(Config, self).__init__(yaml_dict)
 
-        self.tmp_path = Path(self.tmp_path)
-        if 'workspace' in self and self.workspace:
-            self.workspace = Path(self.workspace)
-        if 'plugin_path' in self and self.plugin_path:
-            self.plugin_path = Path(self.plugin_path)
-        if 'setup' in self and self.setup:
-            self.setup = [Path(path) for path in self.setup]
+        ## normalize optional fields
+        self.plugin_paths = self.get('plugin_paths') or []
+        self.remap = self.get('remap') or {}
+        self.external_publishers = self.get('external_publishers') or {}
+        self.sidecars = self.get('sidecars') or {}
+        self.ros2_bag_topics = self.get('ros2_bag_topics') or []
 
-        self.inertial.J = [
-            self.inertial.Jxx, 0.0, 0.0, 
-            0.0, self.inertial.Jyy, 0.0,
-            0.0, 0.0, self.inertial.Jzz,
-        ]
+        ## derive values shared by component wrappers
+        self.inertial.J = [self.inertial.Jxx, 0.0, 0.0, 0.0, self.inertial.Jyy, 0.0, 0.0, 0.0, self.inertial.Jzz]
+
+        ## resolve paths
+        self.tmp_path = Path(self.tmp_path)
+
+        if type(self.plugin_paths) == str:
+            self.plugin_paths = [self.plugin_paths]
+        self.plugin_paths = map(Path, self.plugin_paths)
 
         if 'rotorcraft' in self.components:
             self.components.rotorcraft.calib_file = self.root / 'calib' / self.components.rotorcraft.calib
+
         self.log_dir = self.root / 'logs' / f'{time.strftime("%y%m%d_%H%M%S")}_{self.config_file.stem}'
 
-        if 'ros2' not in yaml_dict or self.ros2 is None:
-            self.ros2 = {'enabled': False}
-
-        if 'external_publishers' not in yaml_dict or self.external_publishers is None:
-            self.external_publishers = {}
-
-
-def load_config(config_file: str | Path) -> Config:
-    return Config(config_file=config_file)
+        for name, command in self.sidecars.items():
+            self.sidecars[name] = resolve_sidecar_command(command, self.root)

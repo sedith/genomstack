@@ -6,13 +6,34 @@ build-backend = "setuptools.build_meta"
 name = "genomstack"
 version = "0.1.0"
 description = "Python interface for a GenoM-based aerial robot stack"
+readme = "README.md"
 authors = [{ name = "Martin Jacquet", email = "martin.jacquet@inria.fr" }]
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24", "PyYAML>=6.0"]
+dependencies = ["argcomplete>=3.0", "numpy>=1.24", "PyYAML>=6.0"]
 # external dependency: genomix (robotpkg)
+
+[project.scripts]
+genomstack_start = "cli.genomstack_start:main"
+genomstack_run = "cli.genomstack_run:main"
+genomstack_ros = "cli.genomstack_ros:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 160
+
+[tool.ruff.format]
+quote-style = "single"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "I", # import sorting
+]
+
+[tool.ruff.lint.isort]
+no-sections = true

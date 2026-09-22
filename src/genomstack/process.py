@@ -7,18 +7,13 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-
-SSH_OPTS = [
-    '-o', 'ConnectTimeout=5',
-    '-o', 'ServerAliveInterval=5',
-    '-o', 'ServerAliveCountMax=3',
-    '-o', 'BatchMode=yes',
-    '-o', 'ConnectionAttempts=1',
-]
+## shared non-interactive SSH options
+SSH_OPTS = ['-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=5', '-o', 'ServerAliveCountMax=3', '-o', 'BatchMode=yes', '-o', 'ConnectionAttempts=1']
 
 
 @contextmanager
 def ignore_sigint():
+    """Temporarily ignore SIGINT while cleaning up managed processes."""
     old_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
@@ -29,10 +24,12 @@ def ignore_sigint():
 
 ## helpers
 def is_localhost(host: str) -> bool:
+    """Return whether a hostname identifies the current machine."""
     return host in ('localhost', '127.0.0.1', '::1', socket.gethostname())
 
 
-def shell_path(path, expand: bool = False) -> str:
+def shell_path(path: str | Path, expand: bool = False) -> str:
+    """Quote a path for a local or remote shell, optionally expanding it."""
     path = str(path)
     if expand:
         return shlex.quote(os.path.expandvars(os.path.expanduser(path)))
@@ -43,7 +40,8 @@ def shell_path(path, expand: bool = False) -> str:
     return shlex.quote(path)
 
 
-def host_path(path, host: str) -> str:
+def host_path(path: str | Path, host: str) -> str:
+    """Resolve home-relative paths on the machine identified by host."""
     path = str(path)
     if not path:
         return path
@@ -54,10 +52,11 @@ def host_path(path, host: str) -> str:
     return path
 
 
+## local process runner
 class LocalRunner:
     def __init__(self, workspace: str = '', setup: list[str] | None = None):
         self.ws = Path(os.path.expandvars(os.path.expanduser(str(workspace)))).resolve() if workspace else None
-        self.setup_cmd = [f'source {shell_path(s, True)}' for s in (setup or [])]
+        self.setup_cmd = setup or []
         self.processes = {}
 
     def _wrap_cmds(self, cmds: list[str]) -> str:
@@ -72,6 +71,8 @@ class LocalRunner:
     def start(self, name: str, cmd: str | list[str], wait: float = 0.0) -> None:
         if name in self.processes:
             raise RuntimeError(f'Process "{name}" is already running')
+
+        ## launch each managed command in its own process group
         cmds = [cmd] if type(cmd) != list else cmd
         self.processes[name] = subprocess.Popen(['bash', '-lc', self._wrap_cmds(cmds)], cwd=self.ws, env=None, stdin=subprocess.DEVNULL, start_new_session=True)
         if wait:
@@ -84,8 +85,9 @@ class LocalRunner:
                 return
             try:
                 if proc.poll() is None:
+                    ## request graceful shutdown before forcing termination
                     try:
-                        os.killpg(proc.pid, signal.SIGTERM)
+                        os.killpg(proc.pid, signal.SIGINT)
                         proc.wait(timeout=timeout)
                     except subprocess.TimeoutExpired:
                         os.killpg(proc.pid, signal.SIGKILL)
@@ -120,18 +122,20 @@ class LocalRunner:
             time.sleep(sleep_period)
 
 
+## remote tmux process runner
 class RemoteTmuxRunner:
     def __init__(self, host: str, workspace: str = '', setup: list[str] | None = None, session: str = 'genomstack'):
         self.host = host
         self.ws = workspace
         self.session = shlex.quote(session)
-        self.setup_cmd = [f'source {shell_path(s)}' for s in (setup or [])]
+        self.setup_cmd = setup or []
         self.processes = {}
 
     def _ssh_run(self, cmd: str, timeout: float | None = None, check: bool = True, **kwargs):
         return subprocess.run(['ssh', *SSH_OPTS, self.host, f'bash -lc {shlex.quote(cmd)}'], timeout=timeout, check=check, **kwargs)
 
     def _wrap_cmds(self, cmds: list[str]) -> str:
+        ## enter the remote workspace before sourcing setup files
         parts = []
         if self.ws:
             parts.append(f'cd {shell_path(self.ws)}')
@@ -147,6 +151,7 @@ class RemoteTmuxRunner:
     def start(self, name: str, cmd: str | list[str], wait: float = 0.0) -> None:
         if name in self.processes:
             raise RuntimeError(f'Process "{name}" is already running')
+        ## create the session on demand and dedicate one pane to each process
         self._ssh_run(f'tmux has-session -t {self.session} 2>/dev/null || tmux new-session -d -s {self.session}')
         cmds = [cmd] if type(cmd) != list else cmd
         tmux_cmd = (
@@ -165,6 +170,7 @@ class RemoteTmuxRunner:
             if pane_id is None:
                 return
             try:
+                ## send Ctrl-C first, then kill the pane if it misses the deadline
                 self._ssh_run(f'tmux send-keys -t {shlex.quote(pane_id)} C-c', check=False)
                 deadline = time.monotonic() + timeout
                 while self._ssh_run(f'tmux has-session -t {shlex.quote(pane_id)}', stderr=subprocess.DEVNULL, check=False).returncode == 0:

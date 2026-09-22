@@ -1,263 +1,273 @@
-# genom_obelix
+# genomstack
 
-Small python wrapper to launch, configure and control GenoM components for aerial robots setup.
+## Table of contents
 
-This repository contains the experiment configuration, launch scripts, ROS 2 helpers, and mission scripts used to operate the robot.
-
-A python package, called `genomstack`, provides a reusable API that abstracts the genom component stack.
-
-The goal is to make common experiment workflows easier:
-
-- start GenoM components
-- configure the robot stack
-- optionally run ROS 2 nodes for lidar / LIO / visualization
-- run missions
-- retrieve logs and bags after experiments
-
-## Requirements
-
-This assumes that the genom environment is installed and correctly configured on the local and remote hosts.
-Similarly, gazebo, ROS2 etc, should be installed and configured before run.
-
-To handle remote launching of modules, please make sure that the robot host is properly configured in `~/.ssh/config`:
-
-```sshconfig
-Host <robot host>
-    HostName <robot ip>
-    User <robot user>
-    ForwardAgent yes
-```
-
-Then the config can simply use:
-
-```yaml
-host: <robot host>
-```
-
-### Remote execution
-
-The config specifies `workspace`: the path to where this repository is cloned on the remote robot. It is needed so remote scripts can run commands such as:
-```bash
-cd ~/workspace
-python3 ros2/launcher.py tilthex.yaml
-```
+- [installation](#installation)
+- [objective](#objective)
+- [concepts](#concepts)
+    - [config: the entry point](#config-the-entry-point)
+    - [robotio](#robotio)
+    - [components](#components)
+    - [external publishers](#external-publishers)
+    - [sidecars](#sidecars)
+- [usage](#usage)
+    - [cli](#cli)
+    - [workspace structure](#workspace-structure)
+    - [configuration file](#configuration-file)
+    - [logs](#logs)
+    - [mission scripts](#mission-scripts)
+    - [how to use it in practice](#how-to-use-it-in-practice)
 
 ## Installation
 
-From the workspace root:
+Install the library in editable mode while developing:
 
 ```bash
-git clone https://github.com/sedith/genom_obelix.git
-cd genom_obelix
-pip install -e .
+python3 -m pip install -e .
 ```
 
-## Repository layout
+The GenoM runtime, component executables, and the robotpkg `genomix` Python module are external dependencies.
+ROS 2 is only required by ROS sidecars, launch files, or bag recording.
+
+## Objective
+
+GenomStack simplifies the runtime of GenoM-based simulations and experiments.
+It automates most of the repeated setup, process supervision, port wiring, and logging, moving most user effort to a single configuration file.
+
+GenomStack provides a small common layer to describe the robot stack, start it consistently, and handle interactions during missions and with external processes.
+
+## Concepts
+
+### Config: the entry point
+
+Each run starts from one YAML configuration file.
+It identifies the host and shell environment, robot properties, GenoM components, port remappings, external publishers, sidecars, and logging policy.
+
+### RobotIO
+
+`RobotIO` is the robot-facing facade used by all processes.
+From a given config file, it connects to GenoM through the `python-genomix` interface, loads component handles, and creates the external publishers.
+
+It exposes the common operations needed by an experiment:
+
+* configure and start components with `setup_components()` and `start_components()`
+* read component ports with `read()`
+* send data through external publishers with `publish()`
+* start, stop, and export logs
+
+The `silent=True` option suppresses initialization output and is intended for sidecars that only read and publish data.
+It is not a safety mechanism, and every `RobotIO` instance retains access to configuration and lifecycle methods.
+The user must ensure that only one experiment executive configures components, controls their lifecycle, and manages logs for a given stack.
+
+### Components
+
+Each GenoM component is handled by a Python wrapper describing how this component type is configured, wired, started, and logged.
+In the YAML, each key is a running instance name and its `type` selects the component wrapper.
+`RobotIO` builds these wrappers and gives access to their raw services through `component.call()`.
+
+Each component contains two functions:
+
+* `setup()` applies component configuration and port wiring
+* `start()` activates runtime behavior when the experiment begins
+
+All wrappers inherit from the `Component` base class and implement `setup()` and `start()` to apply parameters and connect ports.
+They can override `start_log()`, and `stop_log()` when their lifecycle or logging differs from the defaults.
+
+`RobotIO.start_components()` sorts wrappers by `START_ORDER`, so dependencies start before their consumers.
+
+Each wrapper defines nominal port connections, while the config file can override them with `remap` entries keyed as `<instance>.<local-port>`.
+
+### External publishers
+
+External publishers let a non-GenoM process publish to a GenoM input port.
+A config file names the target component, its publisher factory, and the port exposed by the external process.
+
+```yaml
+external_publishers:
+    controller:
+        target: uavatt
+        publisher: uav_input
+        port: controller/uav_input
+```
+
+Publishing is handled through the `RobotIO` interface with `io.publish('controller', message)`.
+
+### Sidecars
+
+Sidecars are non-GenoM, non-interactive processes that run alongside the components, such as controllers, sensor relays, ROS bridges, visualizers, simulators...
+The sidecars are listed in the config file and started and managed automatically alongside the GenoM components.
+
+Reusable sidecars are installed with `genomstack`, while specific ones live in the user workspace.
+
+## Usage
+
+### CLI
+
+Installing the package provides the following commands:
+
+```bash
+genomstack_start <config>
+genomstack_run <config> <sidecar>
+genomstack_ros <config> <launchfile> [arguments ...]
+```
+
+which are defined as
+
+* `genomstack_start` starts the GenoM runtime, genomixd, all configured component processes, and all sidecars
+* `genomstack_run` starts and supervises one configured sidecar
+* `genomstack_ros` runs one script from `ros/launch/`
+
+Each command owns the processes it starts, keeps running while it supervises them, and stops them on keyboard interrupt.
+
+Shell completion discovers configurations, sidecars, and ROS launch scripts.
+Enable it once for the current user with the following command.
+
+```bash
+activate-global-python-argcomplete --user
+```
+
+### Workspace structure
+
+Each workspace using the GenomStack library must follow a semi-rigid structure:
 
 ```text
 workspace/
-    config/             # yaml configuration files
-    calib/              # imu calibration files
-    logs/               # logfiles and ROS bags
-    gz/                 # some simulation worldfile
-    ros2/
-        config/         # ROS 2 parameter files
-        launcher.py     # ROS 2 pipeline launcher
-        bag_record.py   # ROS 2 bag recorder
-    src/genomstack/     # python api for genom stack
-        config.py           # parsed config file with dict-like and/or attribute access
-        runtime.py          # genom layer interface (gemomix...)
-        robotio.py          # low-level GenoM I/O layer
-        mission.py          # high-level mission interface
-        components/         # component abstraction
-            base.py
-            rotorcraft.py    
-            ...
-    obelix.py           # main entry point (mission launch script)
-    lio_relay.py        # background ROS2->genom relay for lio
-    ...                 # other scripts
+├── config/             # YAML configurations
+├── calib/              # optional robot calibration files
+├── logs/               # exported component logs and bags
+├── sidecars/           # optional workspace-specific sidecars
+├── ros/                # optional ROS resources
+│   ├── launch/
+│   └── config/
+├── gazebo/             # optional simulation worlds and models
+└── main.py             # interactive mission script
 ```
 
-## Experiment specification
+An example workspace repository will be linked here [TODO put repo link].
+The `qrsim` and `txsim` configurations enable basic quadrotor and hexarotor simulations.
 
-Users interact with the obelix from a declarative standpoint, through a YAML config file.
+The workspace root is derived from the selected config file, which must be located directly inside the workspace's `config/` directory.
+This convention lets GenomStack resolve calibration files, sidecars, ROS files, and logs without another workspace setting.
 
-The config defines:
-* runtime parameters as `host` and `workspace`
-* robot parameters such as `mass`, `geom`
-* list of genom components to load and their configuration
-* list of external publishers to specific component ports
-* optional ROS 2 settings
+Run commands from the workspace root to use short configuration names.
+For example, `qrsim` resolves to `./config/qrsim.yaml`.
+Otherwise, explicit relative and absolute configuration paths are also accepted.
 
-Component keys are the names of the running instances (`-i` for pocolibs). The `type` field selects the actual genom component wrapper. The remaining fields are used to provide component-specific configurarion parameters.
+### Configuration file
 
-For instance:
+A shortened configuration looks like the following.
+
 ```yaml
+host: robothost
+plugin_paths: [~/genom_devel/lib/genom/pocolibs/plugins]
+tmp_path: ~/tmp_genomstack/
+
+setup:
+    - source ~/.genom_env.sh
+    - source /opt/ros/humble/setup.bash
+    - export ROS_DOMAIN_ID=42
+
+inertial:
+    mass: 1.67
+    Jxx: 0.015
+    Jyy: 0.015
+    Jzz: 0.007
+
+geom:
+    rotors: 4
+    armlen: 0.23
+    cf: 5.9e-4
+    ct: 1e-5
+    rx: 0
+    rz: -1
+
 components:
-    mocap:
-        type: optitrack
-        host: localhost
-        port: "1509"
-```
-will load a component running via `optitrack-pocolibs -f -i mocap &`,
-and configure it with `mocap.connect('localhost', '1509')`.
+    rotorcraft:
+        type: rotorcraft
+        serial: /tmp/pty-qr
+        baud: 0
+        calib: robot.json
 
+remap: {}
 
-## Running an experiment
+external_publishers: {}
 
-### 1. Start the GenoM processes
+sidecars:
+    gazebo-serv: cd gazebo && gz sim -s -r robot.world
+    gazebo-gui: cd gazebo && gz sim -g robot.world
 
-For now, this is still done through shell scripts.
-
-```bash
-./bin/start_genom.sh
+ros2_bag_topics: []
 ```
 
-> Be careful to match instance names with those in the configuration yaml 
-> A python script to handle auto start of components (local and remote) is still a todo
+The required fields are listed below:
 
-### 2. Optionally start ROS 2 processing
+* `host`: machine reached through `genomix` and used for remote bag recording
+* `tmp_path`: temporary directory dedicated to genomstack for GenoM logs and ROS bags
+* `setup`: shell commands applied before managed processes
+* `inertial` and `geom`: shared vehicle parameters
+* `components`: component instances and their component-specific settings
 
-The ROS 2 launcher reads the main config, which should contain:
-```yaml
-ros2:
-    enabled: true
-    ...
-```
+The optional fields are listed below:
 
-Run with:
-```bash
-python3 ros2/launcher.py <cfg_file>.yaml
-```
+* `plugin_paths`: GenoM plugin directories passed to `genomix`
+* `remap`: port overrides, keyed as `<component>.<local-port>`
+* `external_publishers`: publishers used by non-GenoM processes
+* `sidecars`: additional processes managed with the components
+* `ros2_bag_topics`: ROS 2 topics recorded with the mission
 
-ROS 2 nodes run on the same host as the GenoM components.
+Use `{}`, `[]`, or omit empty optional fields.
 
-```bash
-python3 ros2/launcher.py <cfg_file>.yaml
-```
+Machine-specific paths should be absolute or relative to `~`.
 
-### 3. Run the mission
+Sidecar commands are resolved according to the following rules:
 
-The mission management is handled with an high-level API in python:
+* an absolute executable is used directly
+* a relative path such as `sidecars/controller.py` is resolved from the workspace root
+* a bare Python filename such as `rviz_bridge.py` selects a reusable sidecar installed with `genomstack`
+* other commands are passed to the shell unchanged
+
+Note for Gazebo: run the server and GUI as separate sidecars.
+This lets the process manager stop both reliably, whereas a combined process may leave the server running upon keyboard interrupt.
+
+### Logs
+
+`RobotIO` owns experiment logging:
+
+* component logs and optional ROS bags are first written under `tmp_path`
+* a ROS bag is recorded when `ros2_bag_topics` is non-empty, on the configured robot host and through a remote `tmux` session when necessary
+* stopping the mission exports the temporary files to a timestamped directory under the workspace's `logs/`
+
+### Mission scripts
+
+A mission script is the experiment executive that configures the components, controls their lifecycle and logging, and runs experiment-specific actions.
+It can be autonomous and run on the component host, or interactive and run from a workstation connected through `genomix`.
+
+`Mission` is an optional convenience layer around `RobotIO` for common actions such as spinning the rotors, starting the components, moving with `goto()` or `gotoz()` via the `maneuver` planner, and stopping the experiment.
+With `relative=True`, commanded positions and headings are expressed relative to the robot pose captured when the `Mission` is created
+(⚠️ in that case, the `io.setup_components()` must be called before the `Mission` constructor, such that the `pom` state-estimator is initialized).
+
+A typical mission script creates `RobotIO`, applies the configuration, and then uses the `Mission` helpers or interacts directly through component calls.
 
 ```python
-from genomstack import Mission
+from genomstack import Mission, RobotIO
 
-m = Mission("tilthex")
+io = RobotIO('qrsim')
+io.setup_components()
+mission = Mission(io, relative=True)
 
-m.setup()
-m.spin()
-m.start(prompt=True)
-
-m.takeoff(1, prompt=True)
-m.goto(0, 0, 1.0, 0.0, duration=5, prompt=True)
-
-m.land(prompt=True)
-m.stop(prompt=True)
+io.start_logs()
+mission.spin()
+mission.start(z_start=0.5, ramp_duration=5, prompt=True)
+# experiment-specific commands
+mission.gotoz(z=-0.05, prompt=True)
+mission.stop(prompt=True)
 ```
 
-> Note: Individual components can still be accessed easily to do custom mission launch
+### How to use it in practice
 
-## `genomstack` Python package
-
-The `genomstack` package is the Python API used to interact with the GenoM stack.
-
-Main layers:
-
-* `Config`
-    * loads the experiment YAML file to python, providing dict-like and attribute-style access
-    * resolves useful paths such as calibration files and log directories
-* `Runtime`
-    * connects to `genomix`
-    * loads genom components
-* `Component`
-    * each component is wrapped in a class inheriting the `Component` base
-    * for each component, a specific `setup()` procedure is defined (set parameters, connect ports, etc)
-    * provides access to the component API with `call()` and `connect_port()`
-* `ExternalPublisher`
-    * used to feed custom data into a component, for example lidar or estimator output into `pom`
-    * creates the pocolibs port file in `/tmp/`, connects it to the target component port
-    * assumes the user provides the correctly formatted GenoM message dictionary
-* `RobotIO`
-    * interface to the whole robot stack
-    * owns the runtime, components, and external publishers
-    * provides `setup()`, `read()` for each component, and `publish()` for each external publisher
-* `Mission`
-    * high-level experiment/flight interface
-    * owns a `RobotIO`
-    * provides user-facing methods such as `spin()`, `start()`, `takeoff()`, `goto()`, `land()`, `stop()`
-    * handles experiment recording through genom logs and ROS bags
-
-## ROS 2
-
-The ROS 2 folder is kept outside the python package. It is an add-on around the experiment, rather than part of the core genom API.
-
-The main config still contains the ROS 2 options so that the experiment is described in one place.
-
-### ROS 2 setup
-
-The launcher sources the setup files listed in the config:
-
-```yaml
-ros2:
-  setup:
-    - /opt/ros/humble/setup.bash
-    - ~/ros2_ws/install/setup.bash
-```
-
-This means you do not need to manually source ROS 2 before running:
-```bash
-python3 ros2/launcher.py tilthex.yaml
-```
-
-### ROS domain
-
-Set the ROS domain in the config:
-
-```yaml
-ros2:
-  domain_id: 42
-```
-
-The launcher exports:
-
-```bash
-ROS_DOMAIN_ID=42
-ROS_LOCALHOST_ONLY=0
-```
-
-Use the same domain for the robot-side ROS nodes and local RViz. -->
-
-## Logs and bags
-
-ROS bag and genom logs are handled by the `Mission` layer. They are generated in `/tmp/` on the host then copied locally. Each experiment creates one log directory `logs/<date>`.
-
-For remote experiments, logs and bags are retrieved with `scp`.
-
-## Disclaimers
-
-This stack is currently designed for development use.
-
-Important rules:
-
-* only one `main` process should call `RobotIO.setup()` for a given robot
-* other background processes should normally use only `read()` and `publish()`
-* remote log and bag retrieval assumes SSH/SCP are configured correctly
-
-## TODO
-
-to be tested:
-* ROS bag start/stop from `Mission`
-* retrieve remote logs and bags
-
-to automatize:
-* source etc
-* domain_id
-* connection up for lidar
-* log folder creation
-
-to be implemented:
-* genom components launcher for local and remote hosts using tmux
-* script to run genom components running remotely on robot
-* script for publishing to pom (lio relay)
-* gz lidar and imu to test stuff in sim
+1. install `genomstack`, GenoM, and the required components
+2. copy the example workspace or reproduce the structure above
+3. create a dedicated config file describing the robot and every process needed by the experiment
+4. create experiment-specific sidecars, ROS files, and a `main.py` mission as needed
+5. start the runtime from the workspace root
+6. in another terminal, run the mission script with the same configuration
