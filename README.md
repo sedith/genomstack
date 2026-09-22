@@ -2,21 +2,22 @@
 
 ## Table of contents
 
-- [installation](#installation)
-- [objective](#objective)
-- [concepts](#concepts)
-    - [config: the entry point](#config-the-entry-point)
-    - [robotio](#robotio)
-    - [components](#components)
-    - [external publishers](#external-publishers)
-    - [sidecars](#sidecars)
-- [usage](#usage)
-    - [cli](#cli)
-    - [workspace structure](#workspace-structure)
-    - [configuration file](#configuration-file)
-    - [logs](#logs)
-    - [mission scripts](#mission-scripts)
-    - [how to use it in practice](#how-to-use-it-in-practice)
+* [installation](#installation)
+* [objective](#objective)
+* [concepts](#concepts)
+    * [config: the entry point](#config-the-entry-point)
+    * [robotio](#robotio)
+    * [components](#components)
+    * [external publishers](#external-publishers)
+    * [sidecars](#sidecars)
+    * [ros utils](#ros-utils)
+* [usage](#usage)
+    * [cli](#cli)
+    * [workspace structure](#workspace-structure)
+    * [configuration file](#configuration-file)
+    * [logs](#logs)
+    * [mission scripts](#mission-scripts)
+    * [how to use it in practice](#how-to-use-it-in-practice)
 
 ## Installation
 
@@ -98,6 +99,12 @@ Sidecars are non-GenoM, non-interactive processes that run alongside the compone
 The sidecars are listed in the config file and started and managed automatically alongside the GenoM components.
 
 Reusable sidecars are installed with `genomstack`, while specific ones live in the user workspace.
+
+### ROS Utils
+
+GenomStack provides small ROS 2 utilities for processes that run alongside the main GenoM stack.
+`RobotIO` can optionally record the topics listed in `ros2_bag_topics`, either locally or on the configured robot host (see [logs](#logs) for details).
+The `rosutils.convert` module provides common conversions between ROS2 messages and GenoM data structures.
 
 ## Usage
 
